@@ -136,7 +136,7 @@ if __name__ == "__main__":
     points=[]
     for i in tracks:
         for j in i:
-            if j[0]>=104.06060 and j[1]>=30.66680 and j[0]<=104.07049 and j[1]<=30.66718:
+            if j[0]>=104.06060 and j[1]>=30.66680 and j[0]<=104.07049 and j[1]<=30.66718: # 羊市街+西玉龙街
                 points.append(Point(j[0], j[1]))
     df_track=gp.GeoDataFrame(geometry=points)
     fig, ax=plt.subplots(figsize=(12, 8))
