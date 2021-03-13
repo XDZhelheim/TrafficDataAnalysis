@@ -8,7 +8,6 @@ import math
 from sklearn.cluster import KMeans
 
 colors=["#A1E2E6", "#E6BDA1", "#B3A16B", "#678072", "#524A4A"]
-time_interval=10 # 这个变量是两次 GPS 点之间的时间间隔，因为此文件中固定 10s 定位一次，所以下面的 timestamp 实际上没用到
 
 def get_tracks(num_of_cars: int) -> list:
     """
@@ -124,37 +123,51 @@ def kmeans(kmeans_input):
     plt.show()
 
 if __name__ == "__main__":
-    # df=pd.read_table("./TrafficDataAnalysis/boundary.txt", nrows=10000)
-    # df['geometry']=df['geometry'].apply(lambda z: wkt.loads(z))
-    # df=gp.GeoDataFrame(df)
-    # df.crs={'init':'epsg:4326'}
+    df=pd.read_table("./TrafficDataAnalysis/boundary.txt")
+    df['geometry']=df['geometry'].apply(wkt.loads)
+    df=gp.GeoDataFrame(df)
+    df.crs={'init':'epsg:4326'}
 
-    num_of_cars=1000 # 最后调整到了 20000
+    num_of_cars=20000 # 最后调整到了 20000
 
-    # 1. 筛选此条路的 GPS 点
+    # 羊市街+西玉龙街
+    roads=df.loc[(df["obj_id"]==283504) | (df["obj_id"]==283505) | (df["obj_id"]==283506), "geometry"].apply(lambda x: x.buffer(distance=0.0001))
+
+    # 1. GPS 点匹配到道路上
     tracks=get_tracks(num_of_cars)
-    points=[]
-    for i in tracks:
-        for j in i:
-            if j[0]>=104.06060 and j[1]>=30.66680 and j[0]<=104.07049 and j[1]<=30.66718: # 羊市街+西玉龙街
-                points.append(Point(j[0], j[1]))
-    df_track=gp.GeoDataFrame(geometry=points)
-    fig, ax=plt.subplots(figsize=(12, 8))
-    ax.axis("off")
-    df_track.plot(ax=ax, color="black", markersize=0.2)
+
+    # points_forplot=[] # 只用来画图
+    points=[[] for i in range(len(roads))]
+    for track in tracks:
+        for gps in track:
+            p=Point(gps[0], gps[1])
+            for i in range(len(roads)):
+                road=roads.iloc[i]
+                if road.contains(p):
+                    points[i].append({"coord": p, "time": gps[2]})
+                    # points_forplot.append(p)
+    # FIXME: 因为 buffer() 的作用 一个点可能会匹配到多条路段上
+
+    # 画所有点
+    # df_track=gp.GeoDataFrame(geometry=points_forplot)
+    # fig, ax=plt.subplots(figsize=(12, 8))
+    # ax.axis("off")
+    # df_track.plot(ax=ax, color="black", markersize=0.2)
 
     # 2. 计算中点坐标和速度
+    # midpoints=[[] for i in range(len(roads))]
     midpoints=[]
-    for i in range(len(points)-1):
-        midpoint={}
-        midpoint["coord"]=Point((points[i].x+points[i+1].x)/2, (points[i].y+points[i+1].y)/2)
-        midpoint["speed"]=get_distance(points[i], points[i+1])/time_interval
-        midpoints.append(midpoint)
+    for i in range(len(points)):
+        for j in range(len(points[i])-1):
+            midpoint={}
+            midpoint["coord"]=Point((points[i][j]["coord"].x+points[i][j+1]["coord"].x)/2, (points[i][j]["coord"].y+points[i][j+1]["coord"].y)/2)
+            midpoint["speed"]=points[i][j]["coord"].distance(points[i][j+1]["coord"])/abs(points[i][j+1]["time"]-points[i][j]["time"])
+            midpoints.append(midpoint)
 
+    # 画中点
     # midpointcoords=[]
     # for midpoint in midpoints:
     #     midpointcoords.append(midpoint["coord"])
-    
     # df_midpoint=gp.GeoDataFrame(geometry=midpointcoords)
     # df_midpoint.plot(ax=ax, color="red", markersize=0.2)
     # show_points(df_midpoint, "red", "中点")
@@ -201,4 +214,6 @@ if __name__ == "__main__":
         [1.04069519e+02 3.06670723e+01 1.63441321e-05]
         [1.04064867e+02 3.06670066e+01 2.96561530e-05]
         [1.04066795e+02 3.06670652e+01 3.61342084e-05]]
+
+    新方法: 与老方法之间误差 0.0002 以内（应该是新方法更准）
     """

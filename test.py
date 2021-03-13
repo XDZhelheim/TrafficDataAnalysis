@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import geopandas as gp
-from shapely.geometry import Polygon, MultiLineString
+from shapely.geometry import Polygon, MultiLineString, Point
 import shapely.wkt as wkt
 import supersegment
 
@@ -88,3 +88,12 @@ import supersegment
 # df.crs={'init':'epsg:4326'}
 
 # supersegment.show_district_and_road(df, None, 21, 21, None)
+
+# roads=df.loc[(df["obj_id"]==283504) | (df["obj_id"]==283505) | (df["obj_id"]==283506), "geometry"].apply(lambda x: x.buffer(distance=0.0001))
+# print(roads.iloc[0])
+
+p1=Point(1, 2)
+p2=Point(1, 2)
+d1={"coord": p1, "time": 10}
+d2={"coord": p2, "time": 20}
+print(d1, d2)

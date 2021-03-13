@@ -9,7 +9,6 @@ import supersegment
 if __name__ == "__main__":
     df=pd.read_table("./TrafficDataAnalysis/boundary.txt")
     df['geometry']=df['geometry'].apply(wkt.loads)
-    df["obj_name"]=df["obj_name"].astype("str")
     df=gp.GeoDataFrame(df)
     df.crs={'init':'epsg:4326'}
 
