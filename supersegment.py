@@ -4,7 +4,6 @@ import pandas as pd
 import geopandas as gp
 from shapely.geometry import Polygon, MultiLineString, Point
 import shapely.wkt as wkt
-import math
 from sklearn.cluster import KMeans
 import time
 import datetime
@@ -181,8 +180,12 @@ def get_matched_points(tracks, roads, plot=False, timer=False):
 
     return points
 
-def get_midpoints(points, plot=False, timer=False):
-    # TODO: 中点二次匹配
+def get_midpoints(points, match=False, roads=None, plot=False, timer=False):
+    """
+    match 表示是否只保留在路上的中点
+
+    如果一条路是弧形，算出的中点可能不在路上
+    """
     if plot:
         midpoints_forplot=[]
 
@@ -194,6 +197,11 @@ def get_midpoints(points, plot=False, timer=False):
         for j in range(len(points[i])-1):
             midpoint={}
             midpoint["coord"]=Point((points[i][j]["coord"].x+points[i][j+1]["coord"].x)/2, (points[i][j]["coord"].y+points[i][j+1]["coord"].y)/2)
+
+            if match:
+                if not roads.iloc[i].contains(midpoint["coord"]):
+                    continue
+
             midpoint["speed"]=points[i][j]["coord"].distance(points[i][j+1]["coord"])/abs(points[i][j+1]["time"]-points[i][j]["time"])
             midpoints[i].append(midpoint)
             if plot:
@@ -264,27 +272,27 @@ if __name__ == "__main__":
     df=read_boundary(timer=True)
 
     # 1. GPS 点匹配到道路上
-    # XXX: 双向车道, 注意 buffer_distance 参数能否把两方向区分出来
+    # FIXME: 双向车道, 注意 buffer_distance 参数能否把两方向区分出来，但是太小的话有时候框不到点
     num_of_cars=2000 # 最后调整到了 20000
 
     buffer_distance=0.00004
 
     # 羊市街+西玉龙街
-    roads=df.loc[(df["obj_id"]==283504) | (df["obj_id"]==283505) | (df["obj_id"]==283506), "geometry"].apply(lambda x: x.buffer(distance=buffer_distance))
+    # roads=df.loc[(df["obj_id"]==283504) | (df["obj_id"]==283505) | (df["obj_id"]==283506), "geometry"].apply(lambda x: x.buffer(distance=buffer_distance))
     
+    road_start_index=21
+    road_end_index=21
+
+    roads=df.loc[road_start_index:road_end_index, "geometry"].apply(lambda x: x.buffer(distance=buffer_distance))
+
     show_geom(gp.GeoDataFrame(geometry=roads), "blue", "road")
-
-    # road_start_index=21
-    # road_end_index=21
-
-    # roads=df.loc[road_start_index:road_end_index, "geometry"].apply(lambda x: x.buffer(distance=buffer_distance))
 
     tracks=get_tracks(num_of_cars)
 
     points=get_matched_points(tracks, roads, plot=True, timer=True)
 
     # 2. 计算中点坐标和速度
-    midpoints=get_midpoints(points, plot=True, timer=True)
+    midpoints=get_midpoints(points, plot=True, timer=True, match=True, roads=roads)
 
     # 3. 将中点放入 kmeans 模型
     segment_centers=get_segment_centers(midpoints, timer=True)
