@@ -50,7 +50,7 @@ def show_district_and_road(df, district_line_number_start, district_line_number_
 
     boundary.txt 的 0~20 行是区域的边界信息, 21 及之后是道路
 
-    Typical use case: show_district_and_road(df, None, 21, 21, None)
+    Typical use case: show_district_and_road(df, None, 20, 21, None) 注意是闭区间
     """
     fig, ax=plt.subplots(figsize=(12, 8))
     df.loc[district_line_number_start:district_line_number_end].plot(ax=ax, color=colors[1], edgecolor="white", linewidth=0.3)
@@ -62,7 +62,7 @@ def show_district_and_road(df, district_line_number_start, district_line_number_
 
     plt.show()
 
-def show_points(df, color, title):
+def show_geom(df, color, title):
     """
     画点
 
@@ -81,75 +81,84 @@ def show_points(df, color, title):
     fig.canvas.set_window_title(title)
     plt.show()
 
-def get_distance(p1: Point, p2: Point):
-    return math.sqrt((p1.x-p2.x)**2+(p1.y-p2.y)**2)
+def kmeans(kmeans_input, k=None, plot=False):
+    # TODO: 选择 k 的算法
+    if not k:
+        # 利用SSE选择k, 手肘法
+        SSE=[]  # 存放每次结果的误差平方和
+        for k in range(1, 9):
+            estimator=KMeans(n_clusters=k)
+            estimator.fit(kmeans_input)
+            SSE.append(estimator.inertia_)
 
-def kmeans(kmeans_input):
-    # 利用SSE选择k, 手肘法
-    SSE=[]  # 存放每次结果的误差平方和
-    for k in range(1, 9):
-        estimator = KMeans(n_clusters=k)
-        estimator.fit(kmeans_input)
-        SSE.append(estimator.inertia_)
-    X = range(1, 9)
-    plt.subplot(221)
-    plt.xlabel('k')
-    plt.ylabel('SSE')
-    plt.plot(X, SSE, 'o-')
+        diff=[]
+        for i in range(len(SSE)-1):
+            diff.append(SSE[i]-SSE[i+1])
 
-    k=4
-    km_model = KMeans(n_clusters=k)
+        for i in range(len(diff)):
+            if diff[i]<=diff[0]/20:
+                k=i+1
+                break
+
+        if plot:
+            X = range(1, 9)
+            plt.subplot(221)
+            plt.xlabel('k')
+            plt.ylabel('SSE')
+            plt.plot(X, SSE, 'o-')
+
+    km_model=KMeans(n_clusters=k)
     km_model.fit(kmeans_input)
 
     # 分类信息
     y_pred = km_model.predict(kmeans_input)
 
     centers = km_model.cluster_centers_
-    print(centers)
 
-    # 3d所有点
-    ax=plt.subplot(222, projection = '3d')
-    ax.scatter(kmeans_input[:, 0], kmeans_input[:, 1], kmeans_input[:, 2], c=y_pred, cmap=plt.cm.tab10)
-    # print(type(kmeans_input[:, 2][0]))
+    if plot:
+        # 3d所有点
+        ax=plt.subplot(222, projection = '3d')
+        ax.scatter(kmeans_input[:, 0], kmeans_input[:, 1], kmeans_input[:, 2], c=y_pred, cmap=plt.cm.tab10)
 
-    # 2d所有点
-    plt.subplot(223)
-    plt.scatter(kmeans_input[:, 0], kmeans_input[:, 1], c=y_pred, cmap=plt.cm.tab10, s=30)
-    for i in range(k):
-        plt.annotate(str(i+1), (centers[i, 0], centers[i, 1]))
+        # 2d所有点
+        plt.subplot(223)
+        plt.scatter(kmeans_input[:, 0], kmeans_input[:, 1], c=y_pred, cmap=plt.cm.tab10, s=30)
+        for i in range(k):
+            plt.annotate(str(i+1), (centers[i, 0], centers[i, 1]))
 
-    # 3d 中心点 s为大小
-    ax=plt.subplot(224, projection = '3d')
-    ax.scatter(centers[:, 0], centers[:, 1], centers[:, 2], marker='*', s=80)
+        # 3d 中心点 s为大小
+        ax=plt.subplot(224, projection = '3d')
+        ax.scatter(centers[:, 0], centers[:, 1], centers[:, 2], marker='*', s=80)
 
-    # ax.axis("off")
-    plt.show()
+        # ax.axis("off")
+        plt.show()
 
-if __name__ == "__main__":
-    start=time.time()
+    return k, y_pred, centers
+
+def read_boundary(timer=False):
+    if timer:
+        start_read=time.time()
 
     df=pd.read_table("./TrafficDataAnalysis/boundary.txt")
     df['geometry']=df['geometry'].apply(wkt.loads)
     df=gp.GeoDataFrame(df)
-    # df.crs={'init':'epsg:4326'}
     df.crs=CRS("epsg:4326")
 
-    end_read=time.time()
-    print("读文件用时:", str(datetime.timedelta(seconds=end_read-start)))
+    if timer:
+        end_read=time.time()
+        print("读文件用时:", str(datetime.timedelta(seconds=end_read-start_read)))
 
-    # 1. GPS 点匹配到道路上
-    start_gps=time.time()
+    return df
 
-    num_of_cars=2000 # 最后调整到了 20000
+def get_matched_points(tracks, roads, plot=False, timer=False):
+    # FIXME: 因为 buffer() 的作用 一个点可能会匹配到多条路段上
 
-    # 羊市街+西玉龙街
-    # roads=df.loc[(df["obj_id"]==283504) | (df["obj_id"]==283505) | (df["obj_id"]==283506), "geometry"].apply(lambda x: x.buffer(distance=0.0001))
+    if plot:
+        points_forplot=[] # 只用来画图
 
-    roads=df.loc[21:23, "geometry"].apply(lambda x: x.buffer(distance=0.0001))
+    if timer:
+        start_gps=time.time()
 
-    tracks=get_tracks(num_of_cars)
-
-    # points_forplot=[] # 只用来画图
     points=[[] for i in range(len(roads))]
     for track in tracks:
         for gps in track:
@@ -158,68 +167,132 @@ if __name__ == "__main__":
                 road=roads.iloc[i]
                 if road.contains(p):
                     points[i].append({"coord": p, "time": gps[2]})
-                    # points_forplot.append(p)
-    # FIXME: 因为 buffer() 的作用 一个点可能会匹配到多条路段上
-
-    end_gps=time.time()
-    print("GPS 点匹配用时:", str(datetime.timedelta(seconds=end_gps-start_gps)))
-
+                    if plot:
+                        points_forplot.append(p)
+    
+    if timer:
+        end_gps=time.time()
+        print("GPS 点匹配用时:", str(datetime.timedelta(seconds=end_gps-start_gps)))
+    
     # 画所有点
-    # df_track=gp.GeoDataFrame(geometry=points_forplot)
-    # fig, ax=plt.subplots(figsize=(12, 8))
-    # ax.axis("off")
-    # df_track.plot(ax=ax, color="black", markersize=0.2)
+    if plot:
+        df_track=gp.GeoDataFrame(geometry=points_forplot)
+        show_geom(df_track, "black", "所有点")
 
-    # 2. 计算中点坐标和速度
-    start_mid=time.time()
+    return points
 
-    # midpoints=[[] for i in range(len(roads))]
-    midpoints=[]
+def get_midpoints(points, plot=False, timer=False):
+    # TODO: 中点二次匹配
+    if plot:
+        midpoints_forplot=[]
+
+    if timer:
+        start_mid=time.time()
+
+    midpoints=[[] for i in range(len(points))]
     for i in range(len(points)):
         for j in range(len(points[i])-1):
             midpoint={}
             midpoint["coord"]=Point((points[i][j]["coord"].x+points[i][j+1]["coord"].x)/2, (points[i][j]["coord"].y+points[i][j+1]["coord"].y)/2)
             midpoint["speed"]=points[i][j]["coord"].distance(points[i][j+1]["coord"])/abs(points[i][j+1]["time"]-points[i][j]["time"])
-            midpoints.append(midpoint)
+            midpoints[i].append(midpoint)
+            if plot:
+                midpoints_forplot.append(midpoint)
 
-    end_mid=time.time()
-    print("计算中点用时:", str(datetime.timedelta(seconds=end_mid-start_mid)))
+    if timer:
+        end_mid=time.time()
+        print("计算中点用时:", str(datetime.timedelta(seconds=end_mid-start_mid)))
 
-    # 画中点
-    # midpointcoords=[]
-    # for midpoint in midpoints:
-    #     midpointcoords.append(midpoint["coord"])
-    # df_midpoint=gp.GeoDataFrame(geometry=midpointcoords)
-    # df_midpoint.plot(ax=ax, color="red", markersize=0.2)
-    # show_points(df_midpoint, "red", "中点")
+    if plot:
+        # 画中点
+        midpointcoords=[]
+        for midpoint in midpoints_forplot:
+            midpointcoords.append(midpoint["coord"])
+        df_midpoint=gp.GeoDataFrame(geometry=midpointcoords)
+        show_geom(df_midpoint, "red", "中点")
 
-    # 3. 将中点放入 kmeans 模型
-    start_kmeans=time.time()
+    return midpoints
 
-    kmeans_input=[]
-    for midpoint in midpoints:
-        kmeans_input.append([midpoint["coord"].x, midpoint["coord"].y, midpoint["speed"]])
+def get_segment_centers(midpoints, k=None, kmeans_details_plot=False, timer=False):
+    """
+    获取 segment 的中心点
 
-    kmeans_input=np.array(kmeans_input)
+    [
+        [
+            [longitude, latitude, speed(relative)], 
+            [longitude, latitude, speed(relative)],
+            ...
+        ],
+        [
+            [longitude, latitude, speed(relative)], 
+            [longitude, latitude, speed(relative)],
+            ...
+        ],
+        ...
+    ]
+    """
+    if timer:
+        start_kmeans=time.time()
 
-    k=4
-    km_model=KMeans(n_clusters=k)
-    km_model.fit(kmeans_input)
+    segment_centers=[]
 
-    y_pred=km_model.predict(kmeans_input)
+    for i in range(len(midpoints)):
+        kmeans_input=[]
+        for midpoint in midpoints[i]:
+            kmeans_input.append([midpoint["coord"].x, midpoint["coord"].y, midpoint["speed"]])
+        kmeans_input=np.array(kmeans_input)
 
-    centers=km_model.cluster_centers_ # k 类的中心点们
-    print(centers)
+        k, y_pred, centers=kmeans(kmeans_input, k, kmeans_details_plot)
 
-    end_kmeans=time.time()
-    print("KMeans 用时:", str(datetime.timedelta(seconds=end_kmeans-start_kmeans)))
+        segment_centers.append(centers)
 
-    # 4. 画出 segment
-    plt.scatter(kmeans_input[:, 0], kmeans_input[:, 1], c=y_pred, cmap=plt.cm.tab10, s=15)
-    for i in range(k):
-        plt.annotate(str(i+1), (centers[i, 0], centers[i, 1]))
+        plt.scatter(kmeans_input[:, 0], kmeans_input[:, 1], c=y_pred, cmap=plt.cm.tab10, s=15)
+        for j in range(k):
+            plt.annotate("{}-{}".format(i+1, j+1), (centers[j, 0], centers[j, 1]))
+
+    if timer:
+        end_kmeans=time.time()
+        print("KMeans 用时:", str(datetime.timedelta(seconds=end_kmeans-start_kmeans)))
 
     plt.show()
+
+    return segment_centers
+
+if __name__ == "__main__":
+    start=time.time()
+
+    df=read_boundary(timer=True)
+
+    # 1. GPS 点匹配到道路上
+    # XXX: 双向车道, 注意 buffer_distance 参数能否把两方向区分出来
+    num_of_cars=2000 # 最后调整到了 20000
+
+    buffer_distance=0.00004
+
+    # 羊市街+西玉龙街
+    roads=df.loc[(df["obj_id"]==283504) | (df["obj_id"]==283505) | (df["obj_id"]==283506), "geometry"].apply(lambda x: x.buffer(distance=buffer_distance))
+    
+    show_geom(gp.GeoDataFrame(geometry=roads), "blue", "road")
+
+    # road_start_index=21
+    # road_end_index=21
+
+    # roads=df.loc[road_start_index:road_end_index, "geometry"].apply(lambda x: x.buffer(distance=buffer_distance))
+
+    tracks=get_tracks(num_of_cars)
+
+    points=get_matched_points(tracks, roads, plot=True, timer=True)
+
+    # 2. 计算中点坐标和速度
+    midpoints=get_midpoints(points, plot=True, timer=True)
+
+    # 3. 将中点放入 kmeans 模型
+    segment_centers=get_segment_centers(midpoints, timer=True)
+
+    end=time.time()
+    print("总用时:", str(datetime.timedelta(seconds=end-start)))
+
+    print(np.array(segment_centers))
 
     """
     20000 辆车
