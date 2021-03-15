@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import geopandas as gp
-from shapely.geometry import Polygon, MultiLineString, Point
+from shapely.geometry import Point
 import shapely.wkt as wkt
 from sklearn.cluster import KMeans
 import time
@@ -10,6 +10,8 @@ import datetime
 from pyproj import CRS
 
 colors=["#A1E2E6", "#E6BDA1", "#B3A16B", "#678072", "#524A4A"]
+
+# TODO: 底图 openstreetmap
 
 def get_tracks(num_of_cars: int) -> list:
     """
@@ -29,6 +31,8 @@ def get_tracks(num_of_cars: int) -> list:
         ...
     ]
     """
+    # TODO: 优化 parse 过程: 正则? 有没有库可以调?
+
     df=pd.read_csv("./TrafficDataAnalysis/chengdushi_1001_1010.csv", nrows=num_of_cars, header=0, names=["track"], usecols=[2])
     track=[]
     for temp in df["track"]:
@@ -63,7 +67,7 @@ def show_district_and_road(df, district_line_number_start, district_line_number_
 
 def show_geom(df, color, title):
     """
-    画点
+    画几何图形
 
     df 为 geodataframe
 
