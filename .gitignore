@@ -2,6 +2,7 @@
 
 *.txt
 *.csv
+*.json
 
 src/
 __pycache__/

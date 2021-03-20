@@ -4,22 +4,19 @@ import pandas as pd
 import geopandas as gp
 from shapely.geometry import Point
 import shapely.wkt as wkt
-from sklearn.cluster import KMeans
+from sklearn.cluster import KMeans, MeanShift
 import time
 import datetime
 from pyproj import CRS
+import json
 
 colors=["#A1E2E6", "#E6BDA1", "#B3A16B", "#678072", "#524A4A"]
 
-# TODO: 底图 openstreetmap
-
 def show_district_and_road(df, district_line_number_start, district_line_number_end, road_line_number_start, road_line_number_end):
     """
-    此方法用来画城市和道路的整体图
-
-    boundary.txt 的 0~20 行是区域的边界信息, 21 及之后是道路
-
-    Typical use case: show_district_and_road(df, None, 20, 21, None) 注意是闭区间
+    - 此方法用来画城市和道路的整体图
+    - boundary.txt 的 0~20 行是区域的边界信息, 21 及之后是道路
+    - Typical use case: show_district_and_road(df, None, 20, 21, None) 注意是闭区间
     """
     fig, ax=plt.subplots(figsize=(12, 8))
     df.loc[district_line_number_start:district_line_number_end].plot(ax=ax, color=colors[1], edgecolor="white", linewidth=0.3)
@@ -33,16 +30,13 @@ def show_district_and_road(df, district_line_number_start, district_line_number_
 
 def show_geom(df, color, title):
     """
-    画几何图形
-
-    df 为 geodataframe
-
-    使用例:
-
-    df_midpoint=gp.GeoDataFrame(geometry=midpointcoords)
-
-    show_points(df_midpoint, "red", "中点")
+    - 画几何图形
+    - df 为 geodataframe
+    - 使用例:
+        - df_midpoint=gp.GeoDataFrame(geometry=midpointcoords)
+        - show_points(df_midpoint, "red", "中点")
     """
+
     fig, ax=plt.subplots(figsize=(12, 8))
     df.plot(ax=ax, color=color, markersize=0.2)
     plt.title(title, fontsize=15, fontname="Source Han Serif CN", color="black")
@@ -112,10 +106,10 @@ def read_boundary():
 
     return df
 
-def get_tracks(num_of_cars, timer=False):
+def get_tracks(num_of_cars=None, file_path=None, timer=True):
     """
     获取 num_of_cars 辆车的轨迹
-
+    ```
     [
         [
             [longitude, latitude, timestamp], 
@@ -129,14 +123,21 @@ def get_tracks(num_of_cars, timer=False):
         ],
         ...
     ]
+    ```
     """
-    # TODO: 优化 parse 过程: 正则? 有没有库可以调?
 
     if timer:
         start_read=time.time()
 
+    if file_path:
+        with open(file_path, "r") as f:
+            tracks=json.load(f)
+            tracks=list(tracks)
+
+        return tracks
+
     df=pd.read_csv("./TrafficDataAnalysis/chengdushi_1001_1010.csv", nrows=num_of_cars, header=0, names=["track"], usecols=[2])
-    track=[]
+    tracks=[]
     for temp in df["track"]:
         temp=temp.lstrip("[").rstrip("]")
         temp=temp.split(", ") # 注意分隔符是逗号+空格
@@ -146,17 +147,50 @@ def get_tracks(num_of_cars, timer=False):
             item[0]=float(item[0])
             item[1]=float(item[1])
             item[2]=int(item[2])
-        track.append(temp)
+        tracks.append(temp)
 
     if timer:
         end_read=time.time()
         print("读轨迹用时:", str(datetime.timedelta(seconds=end_read-start_read)))
 
-    return track
+    return tracks
 
-def get_matched_points(tracks, roads, plot=False, timer=False):
-    # FIXME: 因为 buffer() 的作用 一个点可能会匹配到多条路段上
-    # TODO: 时间复杂度优化
+def get_matched_points(roads, tracks, plot=False, timer=True):
+    """
+    GPS 点匹配到路
+
+    `points` 为一个四维数组
+        - 第一维: 哪条路
+        - 第二维: 哪条轨迹
+        - 第三维: 哪个 GPS 点
+        - 第四维: GPS 点内部
+        - 实际上是个三维数组, GPS 应该是个 `tuple` 才对
+        - 总之用的时候取到第三维，表示此轨迹在此条路上的一个 GPS 点
+        - 增加轨迹那一维的原因是防止不同车的 GPS 点混在一起，不同车的轨迹点之间是不能求中点的 (时间段不同)
+
+    设一个 GPS 点 `[longitude, latitude, timestamp]=[]`
+
+    ```
+    points = 
+    [
+        [
+            [[], [], [], ...],
+            [[], [], [], ...],
+            ...
+        ],
+        [
+            [[], [], [], ...],
+            [[], [], [], ...],
+            ...
+        ],
+        ...
+    ]
+    ```
+    """
+    # XXX: 因为 buffer() 的作用 一个点可能会匹配到多条路段上 -> 滤波(不要交叉), 按 distance 分配
+    # FIXED: 最简单的方式 -> break
+    # TODO: 时间复杂度优化, 存中间结果, 预处理: 先框出一些点
+    # FIXED: 两辆车不同时间经过同一段路
 
     if plot:
         points_forplot=[] # 只用来画图
@@ -164,16 +198,17 @@ def get_matched_points(tracks, roads, plot=False, timer=False):
     if timer:
         start_gps=time.time()
 
-    points=[[] for i in range(len(roads))]
-    for track in tracks:
-        for gps in track:
+    points=[[[] for i in range(len(tracks))] for j in range(len(roads))]
+    for i in range(len(tracks)):
+        for gps in tracks[i]:
             p=Point(gps[0], gps[1])
-            for i in range(len(roads)):
-                road=roads.iloc[i]
+            for j in range(len(roads)):
+                road=roads.iloc[j]
                 if road.contains(p):
-                    points[i].append({"coord": p, "time": gps[2]})
+                    points[j][i].append({"coord": p, "time": gps[2]})
                     if plot:
                         points_forplot.append(p)
+                    break
     
     if timer:
         end_gps=time.time()
@@ -186,11 +221,10 @@ def get_matched_points(tracks, roads, plot=False, timer=False):
 
     return points
 
-def get_midpoints(points, match=False, roads=None, plot=False, timer=False):
+def get_midpoints(points, match=True, roads=None, plot=False, timer=True):
     """
-    match 表示是否只保留在路上的中点
-
-    如果一条路是弧形，算出的中点可能不在路上
+    - match 表示是否只保留在路上的中点
+    - 如果一条路是弧形，算出的中点可能不在路上
     """
     if plot:
         midpoints_forplot=[]
@@ -200,22 +234,23 @@ def get_midpoints(points, match=False, roads=None, plot=False, timer=False):
 
     midpoints=[[] for i in range(len(points))]
     for i in range(len(points)):
-        for j in range(len(points[i])-1):
-            midpoint={}
-            midpoint["coord"]=Point((points[i][j]["coord"].x+points[i][j+1]["coord"].x)/2, (points[i][j]["coord"].y+points[i][j+1]["coord"].y)/2)
+        for track in points[i]:
+            for j in range(len(track)-1):
+                midpoint={}
+                midpoint["coord"]=Point((track[j]["coord"].x+track[j+1]["coord"].x)/2, (track[j]["coord"].y+track[j+1]["coord"].y)/2)
 
-            if match:
-                if not roads.iloc[i].contains(midpoint["coord"]):
-                    continue
-            
-            # 一条路上多辆车同时出现
-            if points[i][j]["time"]==points[i][j+1]["time"]:
-                continue
+                if match:
+                    if not roads.iloc[i].contains(midpoint["coord"]):
+                        continue
+                
+                # 一条路上多辆车同时出现
+                # if track[j]["time"]==track[j+1]["time"]:
+                #     continue
 
-            midpoint["speed"]=points[i][j]["coord"].distance(points[i][j+1]["coord"])/abs(points[i][j+1]["time"]-points[i][j]["time"])
-            midpoints[i].append(midpoint)
-            if plot:
-                midpoints_forplot.append(midpoint)
+                midpoint["speed"]=track[j]["coord"].distance(track[j+1]["coord"])/abs(track[j+1]["time"]-track[j]["time"])
+                midpoints[i].append(midpoint)
+                if plot:
+                    midpoints_forplot.append(midpoint)
 
     if timer:
         end_mid=time.time()
@@ -231,10 +266,10 @@ def get_midpoints(points, match=False, roads=None, plot=False, timer=False):
 
     return midpoints
 
-def get_segment_centers(midpoints, k=None, kmeans_details_plot=False, timer=False):
+def get_segment_centers_kmeans(midpoints, k=None, kmeans_details_plot=False, timer=True):
     """
-    获取 segment 的中心点
-
+    KMeans 算法获取 segment 的中心点
+    ```
     [
         [
             [longitude, latitude, speed(relative)], 
@@ -248,6 +283,7 @@ def get_segment_centers(midpoints, k=None, kmeans_details_plot=False, timer=Fals
         ],
         ...
     ]
+    ```
     """
     if timer:
         start_kmeans=time.time()
@@ -285,52 +321,134 @@ def get_segment_centers(midpoints, k=None, kmeans_details_plot=False, timer=Fals
 
     return segment_centers
 
-if __name__ == "__main__":
-    start=time.time()
+def get_segment_centers_meanshift(midpoints, timer=True):
+    """
+    MeanShift 算法获取 segment 的中心点
+    ```
+    [
+        [
+            [longitude, latitude, speed(relative)], 
+            [longitude, latitude, speed(relative)],
+            ...
+        ],
+        [
+            [longitude, latitude, speed(relative)], 
+            [longitude, latitude, speed(relative)],
+            ...
+        ],
+        ...
+    ]
+    ```
+    """
 
-    df=read_boundary()
+    if timer:
+        start_meanshift=time.time()
+
+    segment_centers=[]
+
+    ms_model=MeanShift(n_jobs=-1)
+
+    for i in range(len(midpoints)):
+        if not midpoints[i]: # 没有车经过这条路
+            continue
+
+        meanshift_input=[]
+        for midpoint in midpoints[i]:
+            meanshift_input.append([midpoint["coord"].x, midpoint["coord"].y, midpoint["speed"]])
+        meanshift_input=np.array(meanshift_input)
+
+        ms_model.fit(meanshift_input)
+
+        labels=ms_model.labels_
+        centers=ms_model.cluster_centers_
+
+        segment_centers.append(centers)
+
+        # 调整不同配色
+        if i%2:
+            cmap=plt.cm.tab10
+        else:
+            cmap=plt.cm.Paired
+
+        plt.scatter(meanshift_input[:, 0], meanshift_input[:, 1], c=labels, cmap=cmap, s=1)
+        for j in range(len(centers)):
+            plt.annotate("{}-{}".format(i+1, j+1), (centers[j, 0], centers[j, 1]))
+
+    if timer:
+        end_meanshift=time.time()
+        print("MeanShift 用时:", str(datetime.timedelta(seconds=end_meanshift-start_meanshift)))
+
+    plt.show()
+
+    return segment_centers
+
+def supersegment(roads, buffer_distance, num_of_cars, cluster_method, plot=False, timer=True):
+    """
+    - Input:
+        - roads: geometry (MULTILINESTRING)
+    - Hyperparameters: 
+        - buffer_distance
+        - num_of_cars
+        - cluster_method ("kmeans" or "meanshift")
+    - Output:
+        - cluster centers
+        - list of segments [Line, Line, Line, ...]
+    """
+
+    # FIXME: 双向车道, 注意 buffer_distance 参数能否把两方向区分出来，但是太小的话有时候框不到点 -> 合并双向车道
+    # TODO: 分割 line
+
+    if cluster_method not in ("kmeans", "meanshift"):
+        raise Exception("Invalid cluster method")
+
+    if timer:
+        start=time.time()
+
+    roads=roads.apply(lambda x: x.buffer(distance=buffer_distance))
+
+    if plot:
+        show_geom(gp.GeoDataFrame(geometry=roads), "blue", "road")
 
     # 1. GPS 点匹配到道路上
-    # FIXME: 双向车道, 注意 buffer_distance 参数能否把两方向区分出来，但是太小的话有时候框不到点
-    num_of_cars=10000 # 最后调整到了 20000
+    if num_of_cars in (2000, 5000, 10000, 20000):
+        tracks=get_tracks(file_path="./TrafficDataAnalysis/track_"+str(num_of_cars)+"_cars.json", timer=timer)
+    else:
+        tracks=get_tracks(num_of_cars, timer=timer)
 
-    buffer_distance=0.00004
-
-    # 羊市街+西玉龙街
-    # roads=df.loc[(df["obj_id"]==283504) | (df["obj_id"]==283505) | (df["obj_id"]==283506), "geometry"].apply(lambda x: x.buffer(distance=buffer_distance))
-    
-    road_start_index=21
-    road_end_index=25
-
-    roads=df.loc[road_start_index:road_end_index, "geometry"].apply(lambda x: x.buffer(distance=buffer_distance))
-
-    show_geom(gp.GeoDataFrame(geometry=roads), "blue", "road")
-
-    tracks=get_tracks(num_of_cars, timer=True)
-
-    points=get_matched_points(tracks, roads, plot=True, timer=True)
+    points=get_matched_points(roads, tracks, plot=plot, timer=timer)
 
     # 2. 计算中点坐标和速度
-    midpoints=get_midpoints(points, plot=True, timer=True, match=True, roads=roads)
+    midpoints=get_midpoints(points, plot=plot, timer=timer, match=True, roads=roads)
 
-    # 3. 将中点放入 kmeans 模型
-    segment_centers=get_segment_centers(midpoints, timer=True)
+    # 3. 将中点放入聚类模型
+    if cluster_method=="kmeans":
+        segment_centers=get_segment_centers_kmeans(midpoints, timer=timer, kmeans_details_plot=False)
+    else:
+        segment_centers=get_segment_centers_meanshift(midpoints, timer=timer)
 
-    end=time.time()
-    print("总用时:", str(datetime.timedelta(seconds=end-start)))
+    if timer:
+        end=time.time()
+        print("总用时:", str(datetime.timedelta(seconds=end-start)))
 
     print(np.array(segment_centers))
 
-    """
-    20000 辆车
-    36940 个轨迹点
-    4 个 segment
-    经度划分 [104.06060, 104.06346] [104.06347, 104.06580] [104.06581, 104.06814] [104.06815 104.07049]
-    [
-        [1.04062012e+02 3.06669499e+01 2.92533993e-05]
-        [1.04069519e+02 3.06670723e+01 1.63441321e-05]
-        [1.04064867e+02 3.06670066e+01 2.96561530e-05]
-        [1.04066795e+02 3.06670652e+01 3.61342084e-05]]
+if __name__ == "__main__":
+    # TODO: 底图 openstreetmap
 
-    新方法: 与老方法之间误差 0.0002 以内（应该是新方法更准）
-    """
+    methods=("kmeans", "meanshift")
+
+    df=read_boundary()
+
+    buffer_distance=0.00004
+
+    num_of_cars=2000
+
+    # 羊市街+西玉龙街
+    roads=df.loc[(df["obj_id"]==283504) | (df["obj_id"]==283505) | (df["obj_id"]==283506), "geometry"]
+
+    # road_start_index=21
+    # road_end_index=22
+
+    # roads=df.loc[road_start_index:road_end_index, "geometry"]
+
+    supersegment(roads, buffer_distance, num_of_cars, cluster_method=methods[0], timer=True, plot=True)
