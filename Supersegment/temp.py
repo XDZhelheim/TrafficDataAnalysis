@@ -6,10 +6,6 @@ from shapely.geometry import Polygon, MultiLineString, Point
 import shapely.wkt as wkt
 import supersegment
 
-# # Fixing random state for reproducibility
-# np.random.seed(19680801)
-
-
 # def randrange(n, vmin, vmax):
 #     '''
 #     Helper function to make an array of random numbers having shape (n, )
@@ -80,18 +76,13 @@ import supersegment
 #     temp=f.readline()
 # print(temp)
 
-# df=pd.read_table("./TrafficDataAnalysis/boundary.txt", nrows=10000)
-# df['geometry']=df['geometry'].apply(lambda z: wkt.loads(z))
-# df=gp.GeoDataFrame(df)
-# df.crs={'init':'epsg:4326'}
+df=pd.read_table("./TrafficDataAnalysis/boundary.txt", nrows=10000)
+df['geometry']=df['geometry'].apply(lambda z: wkt.loads(z))
+df=gp.GeoDataFrame(df)
+df.crs={'init':'epsg:4326'}
 
 # supersegment.show_district_and_road(df, None, 21, 21, None)
 
-# roads=df.loc[(df["obj_id"]==283504) | (df["obj_id"]==283505) | (df["obj_id"]==283506), "geometry"].apply(lambda x: x.buffer(distance=0.0001))
-# print(roads.iloc[0])
-
-p1=Point(1, 2)
-p2=Point(1, 2)
-d1={"coord": p1, "time": 10}
-d2={"coord": p2, "time": 20}
-print(d1, d2)
+roads=df.loc[(df["obj_id"]==283504) | (df["obj_id"]==283505) | (df["obj_id"]==283506), "geometry"].apply(lambda x: x.buffer(distance=0.0001))
+b=roads.iloc[0].bounds
+print(b)

@@ -74,18 +74,17 @@ def kmeans(kmeans_input, k=None, plot=False):
     km_model.fit(kmeans_input)
 
     # 分类信息
-    y_pred = km_model.predict(kmeans_input)
-
-    centers = km_model.cluster_centers_
+    labels=km_model.labels_
+    centers=km_model.cluster_centers_
 
     if plot:
         # 3d所有点
         ax=plt.subplot(222, projection = '3d')
-        ax.scatter(kmeans_input[:, 0], kmeans_input[:, 1], kmeans_input[:, 2], c=y_pred, cmap=plt.cm.tab10)
+        ax.scatter(kmeans_input[:, 0], kmeans_input[:, 1], kmeans_input[:, 2], c=labels, cmap=plt.cm.tab10)
 
         # 2d所有点
         plt.subplot(223)
-        plt.scatter(kmeans_input[:, 0], kmeans_input[:, 1], c=y_pred, cmap=plt.cm.tab10, s=30)
+        plt.scatter(kmeans_input[:, 0], kmeans_input[:, 1], c=labels, cmap=plt.cm.tab10, s=30)
         for i in range(k):
             plt.annotate(str(i+1), (centers[i, 0], centers[i, 1]))
 
@@ -96,7 +95,7 @@ def kmeans(kmeans_input, k=None, plot=False):
         # ax.axis("off")
         plt.show()
 
-    return k, y_pred, centers
+    return k, labels, centers
 
 def read_boundary():
     df=pd.read_table("./TrafficDataAnalysis/boundary.txt")
@@ -189,7 +188,7 @@ def get_matched_points(roads, tracks, plot=False, timer=True):
     """
     # XXX: 因为 buffer() 的作用 一个点可能会匹配到多条路段上 -> 滤波(不要交叉), 按 distance 分配
     # FIXED: 最简单的方式 -> break
-    # TODO: 时间复杂度优化, 存中间结果, 预处理: 先框出一些点
+    # XXX: 时间复杂度优化, 存中间结果
     # FIXED: 两辆车不同时间经过同一段路
 
     if plot:
@@ -198,9 +197,29 @@ def get_matched_points(roads, tracks, plot=False, timer=True):
     if timer:
         start_gps=time.time()
 
+    bound_list=[]
+    for road in roads:
+        bound_list.append(road.bounds) # road.bounds=(minx, miny, maxx, maxy)
+
+    minx=999; miny=999; maxx=0; maxy=0
+    for bound in bound_list:
+        if bound[0]<minx:
+            minx=bound[0]
+        if bound[1]<miny:
+            miny=bound[1]
+        if bound[2]>maxx:
+            maxx=bound[2]
+        if bound[3]>maxy:
+            maxy=bound[3]
+
     points=[[[] for i in range(len(tracks))] for j in range(len(roads))]
     for i in range(len(tracks)):
         for gps in tracks[i]:
+
+            # 框点，效果拔群
+            if gps[0]<minx or gps[0]<maxy or gps[1]<miny or gps[1]>maxy:
+                continue
+
             p=Point(gps[0], gps[1])
             for j in range(len(roads)):
                 road=roads.iloc[j]
@@ -299,7 +318,7 @@ def get_segment_centers_kmeans(midpoints, k=None, kmeans_details_plot=False, tim
             kmeans_input.append([midpoint["coord"].x, midpoint["coord"].y, midpoint["speed"]])
         kmeans_input=np.array(kmeans_input)
 
-        k, y_pred, centers=kmeans(kmeans_input, k, kmeans_details_plot)
+        k, labels, centers=kmeans(kmeans_input, k, kmeans_details_plot)
 
         segment_centers.append(centers)
 
@@ -309,7 +328,7 @@ def get_segment_centers_kmeans(midpoints, k=None, kmeans_details_plot=False, tim
         else:
             cmap=plt.cm.Paired
 
-        plt.scatter(kmeans_input[:, 0], kmeans_input[:, 1], c=y_pred, cmap=cmap, s=1)
+        plt.scatter(kmeans_input[:, 0], kmeans_input[:, 1], c=labels, cmap=cmap, s=1)
         for j in range(k):
             plt.annotate("{}-{}".format(i+1, j+1), (centers[j, 0], centers[j, 1]))
 
@@ -386,7 +405,7 @@ def supersegment(roads, buffer_distance, num_of_cars, cluster_method, plot=False
     """
     - Input:
         - roads: geometry (MULTILINESTRING)
-    - Hyperparameters: 
+    - Parameters: 
         - buffer_distance
         - num_of_cars
         - cluster_method ("kmeans" or "meanshift")
@@ -433,8 +452,6 @@ def supersegment(roads, buffer_distance, num_of_cars, cluster_method, plot=False
     print(np.array(segment_centers))
 
 if __name__ == "__main__":
-    # TODO: 底图 openstreetmap
-
     methods=("kmeans", "meanshift")
 
     df=read_boundary()
