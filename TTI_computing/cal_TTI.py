@@ -16,7 +16,7 @@ m = folium.Map(location=[30.20592,103.21838])
 road = "../data/boundary.txt"
 city = "../data/city_district.txt"
 # path = "../data/top100.csv"
-path = "../data/chengdushi_1001_1010.csv"
+path = "../../data/chengdushi_1001_1010.csv"
 
 time_flag = 0
 posi_flag = 0
@@ -103,7 +103,7 @@ def get_tracks(num_of_cars: int) -> list:
     ]
     """
     # df = pd.read_csv("../data/chengdushi_1001_1010.csv", nrows=num_of_cars, header=0, names=["track"], usecols=[2])
-    df = pd.read_csv("../data/chengdushi_1001_1010.csv", nrows=num_of_cars, names=["track"], usecols=[2])
+    df = pd.read_csv("../../data/chengdushi_1001_1010.csv", nrows=num_of_cars, names=["track"], usecols=[2])
     track = []
     order_num = 0
     for temp in df["track"]:
