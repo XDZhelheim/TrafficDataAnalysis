@@ -104,8 +104,8 @@ def kmeans(kmeans_input, k=None, plot=False):
 
 
 def read_boundary():
-    df = pd.read_table("./TrafficDataAnalysis/data/boundary.txt")
-    df['geometry'] = df['geometry'].apply(wkt.loads)
+    df = pd.read_csv("./data/boundary.txt",sep='\t')
+    df['geom'] = df['geom'].apply(wkt.loads)
     df = gp.GeoDataFrame(df)
     df.crs = CRS("epsg:4326")
 
@@ -142,7 +142,7 @@ def get_tracks(num_of_cars=None, file_path=None, timer=True):
 
         return tracks
 
-    df = pd.read_csv("./TrafficDataAnalysis/chengdushi_1001_1010.csv", nrows=num_of_cars, header=0, names=["track"],
+    df = pd.read_csv("./data/chengdushi_1001_1010.csv", nrows=num_of_cars, header=0, names=["track"],
                      usecols=[2])
     tracks = []
     for temp in df["track"]:
@@ -307,12 +307,12 @@ def get_segment_centers_kmeans(midpoints, k=None, kmeans_details_plot=False, tim
     ```
     [
         [
-            [longitude, latitude, speed(relative)], 
+            [longitude, latitude, speed(relative)],
             [longitude, latitude, speed(relative)],
             ...
         ],
         [
-            [longitude, latitude, speed(relative)], 
+            [longitude, latitude, speed(relative)],
             [longitude, latitude, speed(relative)],
             ...
         ],
@@ -363,12 +363,12 @@ def get_segment_centers_meanshift(midpoints, timer=True):
     ```
     [
         [
-            [longitude, latitude, speed(relative)], 
+            [longitude, latitude, speed(relative)],
             [longitude, latitude, speed(relative)],
             ...
         ],
         [
-            [longitude, latitude, speed(relative)], 
+            [longitude, latitude, speed(relative)],
             [longitude, latitude, speed(relative)],
             ...
         ],
@@ -430,7 +430,7 @@ def cal_TTI(roads, buffer_distance, num_of_cars, cluster_method, plot=False, tim
 
     # 1. GPS 点匹配到道路上
     if num_of_cars in (2000, 5000, 10000, 20000):
-        tracks = get_tracks(file_path="./TrafficDataAnalysis/track_" + str(num_of_cars) + "_cars.json", timer=timer)
+        tracks = get_tracks(file_path="./data/track_" + str(num_of_cars) + "_cars.json", timer=timer)
     else:
         tracks = get_tracks(num_of_cars, timer=timer)
 
@@ -470,7 +470,7 @@ def supersegment(roads, buffer_distance, num_of_cars, cluster_method, plot=False
 
     # 1. GPS 点匹配到道路上
     if num_of_cars in (2000, 5000, 10000, 20000):
-        tracks = get_tracks(file_path="./TrafficDataAnalysis/track_" + str(num_of_cars) + "_cars.json", timer=timer)
+        tracks = get_tracks(file_path="./data/track_" + str(num_of_cars) + "_cars.json", timer=timer)
     else:
         tracks = get_tracks(num_of_cars, timer=timer)
 
@@ -499,14 +499,14 @@ if __name__ == "__main__":
 
     buffer_distance = 0.00004
 
-    num_of_cars = 2000
+    num_of_cars = 1000
 
     # 羊市街+西玉龙街
-    roads = df.loc[(df["obj_id"] == 283504) | (df["obj_id"] == 283505) | (df["obj_id"] == 283506), "geometry"]
+    roads = df.loc[(df["obj_id"] == 283504) | (df["obj_id"] == 283505) | (df["obj_id"] == 283506), "geom"]
 
     # road_start_index=21
     # road_end_index=22
 
     # roads=df.loc[road_start_index:road_end_index, "geometry"]
 
-    cal_TTI(roads, buffer_distance, num_of_cars, cluster_method=methods[0], timer=True, plot=True)
+    cal_TTI(roads, buffer_distance, num_of_cars, cluster_method=methods[0], timer=True, plot=False)
