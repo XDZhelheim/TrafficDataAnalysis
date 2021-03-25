@@ -10,6 +10,9 @@ import datetime
 from pyproj import CRS
 import json
 import math
+import random
+import warnings
+warnings.filterwarnings('ignore')
 
 colors = ["#A1E2E6", "#E6BDA1", "#B3A16B", "#678072", "#524A4A"]
 
@@ -413,10 +416,6 @@ def LL2Dist(Lat1,Lng1,Lat2,Lng2):
     return distance
 
 
-def distance(p1, p2):
-    return LL2Dist(p1[1],p1[0],p2[1],p2[0])
-
-
 def get_avg_speed(points, match=True, roads=None, plot=False, timer=True):
     """
     - match 表示是否只保留在路上的中点
@@ -429,7 +428,7 @@ def get_avg_speed(points, match=True, roads=None, plot=False, timer=True):
         start_mid = time.time()
 
     avg_speeds = [[] for i in range(len(points))]
-    for track in points:
+    for n,track in enumerate(points):
         for i in range(len(track)-1):
             if track[i]['track_id'] != track[i+1]['track_id']:
                 continue
@@ -439,9 +438,9 @@ def get_avg_speed(points, match=True, roads=None, plot=False, timer=True):
             t2 = track[i+1]['time']
             dis = LL2Dist(p1.x,p1.y,p2.x,p2.y)
             speed = dis / (t2-t1)
-            if speed == 0 | speed >40:
+            if (speed == 0) | (speed > 40):
                 continue
-            avg_speeds.append([speed,t1])
+            avg_speeds[n].append([speed,t1])
 
     if timer:
         end_mid = time.time()
@@ -457,6 +456,45 @@ def get_avg_speed(points, match=True, roads=None, plot=False, timer=True):
 
     return avg_speeds
 
+
+def show_TTIfig(avg_speed,TTI_interval):
+    fig = plt.figure()
+    speed_map = [{} for i in range(len(avg_speed))]
+    for i in range(int(1440 / TTI_interval)):
+        for x_time in speed_map:
+            x_time[i] = []
+    for n,each_roads in enumerate(avg_speed):
+        for i in each_roads:
+            tmp_time = i[1]
+            format_time = time.localtime(tmp_time)
+            minutes = format_time.tm_hour * 60 + format_time.tm_min
+            speed_map[n][int(minutes / TTI_interval)].append(i[0])
+    # lx = []
+    # ly = [[] for i in range(len(avg_speed))]
+    # l_tti = []
+    # free_speed_when = 3
+    # free_speed = np.mean(speed_map[free_speed_when]) # 自由流速度，目前还不确定取哪个时间点来计算自由流速度。
+    for each_map in (speed_map):
+        lx = []
+        ly = []
+        l_tti = []
+        # free_speed_when = 3
+        # free_speed = np.mean(speed_map[free_speed_when])  # 自由流速度，目前还不确定取哪个时间点来计算自由流速度。
+
+        for x_time in each_map:
+            speed_list = each_map[x_time]
+            list_size = len(speed_list)
+            random_list = random.sample(speed_list, int(list_size / 50))
+            avg = np.mean(speed_list)
+            lx.append(x_time)
+            ly.append(avg)
+            # l_tti.append(free_speed / avg)
+            # for x_time in speed_list:
+            #     plt.scatter(x_time,avg, marker='.')  # 打散点图  （各个速度）
+        plt.plot(lx, ly, label='Frist line', linewidth=3, color='r', marker='o')  #画折线图 （平均速度）
+        # plt.plot(lx, l_tti, label='Frist line', linewidth=3, color='r', marker='o')  #画折线图 （平均速度）
+        plt.show()
+    return
 
 def get_segment_centers_kmeans(midpoints, k=None, kmeans_details_plot=False, timer=True):
     """
@@ -594,8 +632,10 @@ def cal_TTI(roads, buffer_distance, num_of_cars, cluster_method, plot=False, tim
     points = get_matched_points2(roads, tracks, plot=plot, timer=timer)
 
     # 2. 计算中点坐标和速度
-    midpoints = get_avg_speed(points, plot=plot, timer=timer, match=True, roads=roads)
-    print(midpoints)
+    avg_speeeds = get_avg_speed(points, plot=plot, timer=timer, match=True, roads=roads)
+
+    # 3. 按照时间将这些点分类，得到每个时间段的平均速度
+    show_TTIfig(avg_speeeds,TTI_interval=30)
 
 
 def supersegment(roads, buffer_distance, num_of_cars, cluster_method, plot=False, timer=True):
@@ -656,7 +696,7 @@ if __name__ == "__main__":
 
     buffer_distance = 0.00004
 
-    num_of_cars = 1000
+    num_of_cars = 30000
 
     # 羊市街+西玉龙街
     roads = df.loc[(df["obj_id"] == 283504) | (df["obj_id"] == 283505) | (df["obj_id"] == 283506), "geom"]
