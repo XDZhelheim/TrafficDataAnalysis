@@ -4,5 +4,8 @@
 *.csv
 *.json
 
+*.xml
+.idea
+
 src/
 __pycache__/
