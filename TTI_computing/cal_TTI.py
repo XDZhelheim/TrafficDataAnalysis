@@ -22,8 +22,6 @@ time_flag = 0
 posi_flag = 0
 start_time = 1  # 这两个时间是，在进行计算时，要选取的时间段
 end_time = 2
-
-
 # 这个算法,几百km误差几十米,几千km误差几百米，不知道叫什么算法
 # 两个经纬度之间的距离,椭球
 def LL2Dist(Lat1,Lng1,Lat2,Lng2):
@@ -67,7 +65,6 @@ def get_road_range(id):
     return r_range
 
 
-# def get_track(start_time, end_time, road_range):
 def get_track(num_of_cars):
     open_path = pd.read_csv(path, nrows=num_of_cars)
     # open_path = pd.read_csv(path)
