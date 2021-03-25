@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import geopandas as gp
-from shapely.geometry import Point
+from shapely.geometry import Point, MultiPoint
 import shapely.wkt as wkt
 from sklearn.cluster import KMeans, MeanShift
 import time
@@ -28,17 +28,17 @@ def show_district_and_road(df, district_line_number_start, district_line_number_
 
     plt.show()
 
-def show_geom(df, color, title):
+def show_geom(obj, color, title, cmap=None):
     """
     - 画几何图形
-    - df 为 geodataframe
+    - obj 为 GeoDataFrame/GeoSeries
     - 使用例:
         - df_midpoint=gp.GeoDataFrame(geometry=midpointcoords)
         - show_points(df_midpoint, "red", "中点")
     """
 
     fig, ax=plt.subplots(figsize=(12, 8))
-    df.plot(ax=ax, color=color, markersize=0.2)
+    obj.plot(ax=ax, color=color, cmap=cmap, markersize=0.2)
     plt.title(title, fontsize=15, fontname="Source Han Serif CN", color="black")
     ax.axis("off")
     fig.canvas.set_window_title(title)
@@ -197,27 +197,14 @@ def get_matched_points(roads, tracks, plot=False, timer=True):
     if timer:
         start_gps=time.time()
 
-    bound_list=[]
-    for road in roads:
-        bound_list.append(road.bounds) # road.bounds=(minx, miny, maxx, maxy)
-
-    minx=999; miny=999; maxx=0; maxy=0
-    for bound in bound_list:
-        if bound[0]<minx:
-            minx=bound[0]
-        if bound[1]<miny:
-            miny=bound[1]
-        if bound[2]>maxx:
-            maxx=bound[2]
-        if bound[3]>maxy:
-            maxy=bound[3]
+    minx, miny, maxx, maxy=roads.total_bounds
 
     points=[[[] for i in range(len(tracks))] for j in range(len(roads))]
     for i in range(len(tracks)):
         for gps in tracks[i]:
 
             # 框点，效果拔群
-            if gps[0]<minx or gps[0]<maxy or gps[1]<miny or gps[1]>maxy:
+            if gps[0]<minx or gps[0]>maxx or gps[1]<miny or gps[1]>maxy:
                 continue
 
             p=Point(gps[0], gps[1])
@@ -285,7 +272,7 @@ def get_midpoints(points, match=True, roads=None, plot=False, timer=True):
 
     return midpoints
 
-def get_segment_centers_kmeans(midpoints, k=None, kmeans_details_plot=False, timer=True):
+def cluster_kmeans(midpoints, k=None, kmeans_details_plot=False, timer=True, plot=True):
     """
     KMeans 算法获取 segment 的中心点
     ```
@@ -307,6 +294,7 @@ def get_segment_centers_kmeans(midpoints, k=None, kmeans_details_plot=False, tim
     if timer:
         start_kmeans=time.time()
 
+    midpoint_labels=[]
     segment_centers=[]
 
     for i in range(len(midpoints)):
@@ -320,27 +308,30 @@ def get_segment_centers_kmeans(midpoints, k=None, kmeans_details_plot=False, tim
 
         k, labels, centers=kmeans(kmeans_input, k, kmeans_details_plot)
 
+        midpoint_labels.append(labels)
         segment_centers.append(centers)
 
-        # 调整不同配色
-        if i%2:
-            cmap=plt.cm.tab10
-        else:
-            cmap=plt.cm.Paired
+        if plot:
+            # 调整不同配色
+            if i%2:
+                cmap=plt.cm.tab10
+            else:
+                cmap=plt.cm.Paired
 
-        plt.scatter(kmeans_input[:, 0], kmeans_input[:, 1], c=labels, cmap=cmap, s=1)
-        for j in range(k):
-            plt.annotate("{}-{}".format(i+1, j+1), (centers[j, 0], centers[j, 1]))
+            plt.scatter(kmeans_input[:, 0], kmeans_input[:, 1], c=labels, cmap=cmap, s=1)
+            for j in range(k):
+                plt.annotate("{}-{}".format(i+1, j+1), (centers[j, 0], centers[j, 1]))
 
     if timer:
         end_kmeans=time.time()
         print("KMeans 用时:", str(datetime.timedelta(seconds=end_kmeans-start_kmeans)))
 
-    plt.show()
+    if plot:
+        plt.show()
 
-    return segment_centers
+    return midpoint_labels, segment_centers
 
-def get_segment_centers_meanshift(midpoints, timer=True):
+def cluster_meanshift(midpoints, timer=True, plot=True):
     """
     MeanShift 算法获取 segment 的中心点
     ```
@@ -363,6 +354,7 @@ def get_segment_centers_meanshift(midpoints, timer=True):
     if timer:
         start_meanshift=time.time()
 
+    midpoint_labels=[]
     segment_centers=[]
 
     ms_model=MeanShift(n_jobs=-1)
@@ -381,41 +373,94 @@ def get_segment_centers_meanshift(midpoints, timer=True):
         labels=ms_model.labels_
         centers=ms_model.cluster_centers_
 
+        midpoint_labels.append(labels)
         segment_centers.append(centers)
 
-        # 调整不同配色
-        if i%2:
-            cmap=plt.cm.tab10
-        else:
-            cmap=plt.cm.Paired
+        if plot:
+            # 调整不同配色
+            if i%2:
+                cmap=plt.cm.tab10
+            else:
+                cmap=plt.cm.Paired
 
-        plt.scatter(meanshift_input[:, 0], meanshift_input[:, 1], c=labels, cmap=cmap, s=1)
-        for j in range(len(centers)):
-            plt.annotate("{}-{}".format(i+1, j+1), (centers[j, 0], centers[j, 1]))
+            plt.scatter(meanshift_input[:, 0], meanshift_input[:, 1], c=labels, cmap=cmap, s=1)
+            for j in range(len(centers)):
+                plt.annotate("{}-{}".format(i+1, j+1), (centers[j, 0], centers[j, 1]))
 
     if timer:
         end_meanshift=time.time()
         print("MeanShift 用时:", str(datetime.timedelta(seconds=end_meanshift-start_meanshift)))
+    
+    if plot:
+        plt.show()
 
-    plt.show()
+    return midpoint_labels, segment_centers
 
-    return segment_centers
+def get_segments(roads, midpoints, midpoint_labels, plot=False, timer=True):
+    """
+    ```
+    [
+        [MultiLineString, MultiLineString, ...],
+        [MultiLineString, MultiLineString, ...],
+        ...
+    ]
+    ```
+    """
+    if timer:
+        start_segment=time.time()
 
-def supersegment(roads, buffer_distance, num_of_cars, cluster_method, plot=False, timer=True):
+    if plot:
+        segments_forplot=[]
+
+    # len(roads_in)==len(roads)==len(points)==len(midpoints) 第一维都是有几条路
+    segments=[[] for i in range(len(midpoints))]
+
+    # midpoint 和 labels 一一对应，一个中点有一个标签
+    # 例如 midpoints[labels==1] 可以取出 midpoints 里所有第 1 类的点
+    for i in range(len(midpoints)):
+        k=len(np.unique(midpoint_labels[i]))
+        for j in range(k):
+            segment_points=np.array(midpoints[i])[midpoint_labels[i]==j]
+            segment_points=[p["coord"] for p in segment_points]
+            segment_points=MultiPoint(segment_points)
+            segment_points=gp.GeoSeries(segment_points)
+            convex_hull=segment_points.convex_hull.iloc[0]
+            segment=roads.iloc[i].intersection(convex_hull)
+            segments[i].append(segment)
+            if plot:
+                segments_forplot.append(segment)
+
+    if timer:
+        end_segment=time.time()
+        print("分割 segment 用时:", str(datetime.timedelta(seconds=end_segment-start_segment)))
+
+    if plot:
+        # df_segments=gp.GeoDataFrame(geometry=segments_forplot)
+        # show_geom(df_segments, "green", "segments")
+        se=gp.GeoSeries(segments_forplot)
+        show_geom(se, None, "segments", cmap=plt.cm.tab10)
+
+    if plot:
+        plt.show()
+
+    return segments
+
+def supersegment(roads_in, buffer_distance, num_of_cars, cluster_method, plot=False, timer=True):
     """
     - Input:
-        - roads: geometry (MULTILINESTRING)
+        - roads_in: GeoSeries
     - Parameters: 
         - buffer_distance
         - num_of_cars
         - cluster_method ("kmeans" or "meanshift")
-    - Output:
-        - cluster centers
-        - list of segments [Line, Line, Line, ...]
+        - plot: bool, default=False
+        - timer: bool, default=True
+    - Returns:
+        - cluster centers (3D array)
+        - list of segments [[MultiLineString, MultiLineString, ...], [MultiLineString, MultiLineString, ...], ...]
     """
 
     # FIXME: 双向车道, 注意 buffer_distance 参数能否把两方向区分出来，但是太小的话有时候框不到点 -> 合并双向车道
-    # TODO: 分割 line
 
     if cluster_method not in ("kmeans", "meanshift"):
         raise Exception("Invalid cluster method")
@@ -423,7 +468,7 @@ def supersegment(roads, buffer_distance, num_of_cars, cluster_method, plot=False
     if timer:
         start=time.time()
 
-    roads=roads.apply(lambda x: x.buffer(distance=buffer_distance))
+    roads=roads_in.apply(lambda x: x.buffer(distance=buffer_distance))
 
     if plot:
         show_geom(gp.GeoDataFrame(geometry=roads), "blue", "road")
@@ -441,24 +486,29 @@ def supersegment(roads, buffer_distance, num_of_cars, cluster_method, plot=False
 
     # 3. 将中点放入聚类模型
     if cluster_method=="kmeans":
-        segment_centers=get_segment_centers_kmeans(midpoints, timer=timer, kmeans_details_plot=False)
+        midpoint_labels, segment_centers=cluster_kmeans(midpoints, timer=timer, kmeans_details_plot=False, plot=plot)
     else:
-        segment_centers=get_segment_centers_meanshift(midpoints, timer=timer)
+        midpoint_labels, segment_centers=cluster_meanshift(midpoints, timer=timer, plot=plot)
+
+    # 4. 凸包+交集求出 Line 类型的 segment
+    segments=get_segments(roads_in, midpoints, midpoint_labels, timer=timer, plot=plot)
 
     if timer:
         end=time.time()
         print("总用时:", str(datetime.timedelta(seconds=end-start)))
 
-    print(np.array(segment_centers))
+    return segments, np.array(segment_centers)
 
 if __name__ == "__main__":
     methods=("kmeans", "meanshift")
+
+    cluster_method=methods[0]
 
     df=read_boundary()
 
     buffer_distance=0.00004
 
-    num_of_cars=2000
+    num_of_cars=10000
 
     # 羊市街+西玉龙街
     roads=df.loc[(df["obj_id"]==283504) | (df["obj_id"]==283505) | (df["obj_id"]==283506), "geometry"]
@@ -468,4 +518,8 @@ if __name__ == "__main__":
 
     # roads=df.loc[road_start_index:road_end_index, "geometry"]
 
-    supersegment(roads, buffer_distance, num_of_cars, cluster_method=methods[0], timer=True, plot=True)
+    segments, segment_centers=supersegment(roads, buffer_distance, num_of_cars, cluster_method=cluster_method, timer=True, plot=True)
+
+    print(np.array(segment_centers))
+
+    # TODO: kmeans 和 meanshift 的函数有大量重复代码，重构
