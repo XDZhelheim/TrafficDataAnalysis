@@ -468,7 +468,7 @@ def supersegment(roads_in, buffer_distance, num_of_cars, cluster_method, plot=Fa
     if timer:
         start=time.time()
 
-    roads=roads_in.apply(lambda x: x.buffer(distance=buffer_distance))
+    roads=roads_in.apply(lambda x: x.buffer(distance=buffer_distance, cap_style=2))
 
     if plot:
         show_geom(gp.GeoDataFrame(geometry=roads), "blue", "road")
@@ -497,12 +497,12 @@ def supersegment(roads_in, buffer_distance, num_of_cars, cluster_method, plot=Fa
         end=time.time()
         print("总用时:", str(datetime.timedelta(seconds=end-start)))
 
-    return segments, np.array(segment_centers)
+    return segments, segment_centers
 
 if __name__ == "__main__":
     methods=("kmeans", "meanshift")
 
-    cluster_method=methods[0]
+    cluster_method=methods[1]
 
     df=read_boundary()
 
