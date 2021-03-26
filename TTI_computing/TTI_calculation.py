@@ -624,10 +624,18 @@ def cal_TTI(roads, buffer_distance, num_of_cars, cluster_method, plot=False, tim
         show_geom(gp.GeoDataFrame(geometry=roads), "blue", "road")
 
     # 1. GPS 点匹配到道路上
-    if num_of_cars in (2000, 5000, 10000, 20000):
-        tracks = get_tracks(file_path="./data/track_" + str(num_of_cars) + "_cars.json", timer=timer)
-    else:
-        tracks = get_tracks(num_of_cars, timer=timer)
+    tracks = []
+    for i in range(20):
+        with open('./data/track_' + str(i*10000) + '_cars.json', "r") as f:
+            tmp_read = json.load(f)
+            # tracks = list(tracks)
+            tracks.append(tmp_read)
+
+    tracks = tracks[:num_of_cars]
+    # if num_of_cars in (2000, 5000, 10000, 20000):
+    #     tracks = get_tracks(file_path="./data/track_" + str(num_of_cars) + "_cars.json", timer=timer)
+    # else:
+    #     tracks = get_tracks(num_of_cars, timer=timer)
 
     points = get_matched_points2(roads, tracks, plot=plot, timer=timer)
 
@@ -696,14 +704,13 @@ if __name__ == "__main__":
 
     buffer_distance = 0.00004
 
-    num_of_cars = 30000
+    num_of_cars = 10000
 
     # 羊市街+西玉龙街
     roads = df.loc[(df["obj_id"] == 283504) | (df["obj_id"] == 283505) | (df["obj_id"] == 283506), "geom"]
 
     # road_start_index=21
     # road_end_index=22
-
     # roads=df.loc[road_start_index:road_end_index, "geometry"]
 
     cal_TTI(roads, buffer_distance, num_of_cars, cluster_method=methods[0], timer=True, plot=False)
