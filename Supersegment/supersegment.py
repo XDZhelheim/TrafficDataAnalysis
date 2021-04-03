@@ -249,10 +249,6 @@ def get_midpoints(points, match=True, roads=None, plot=False, timer=True):
                     if not roads.iloc[i].contains(midpoint["coord"]):
                         continue
                 
-                # 一条路上多辆车同时出现
-                # if track[j]["time"]==track[j+1]["time"]:
-                #     continue
-
                 midpoint["speed"]=track[j]["coord"].distance(track[j+1]["coord"])/abs(track[j+1]["time"]-track[j]["time"])
                 midpoints[i].append(midpoint)
                 if plot:
@@ -502,7 +498,7 @@ def supersegment(roads_in, buffer_distance, num_of_cars, cluster_method, plot=Fa
 if __name__ == "__main__":
     methods=("kmeans", "meanshift")
 
-    cluster_method=methods[1]
+    cluster_method=methods[0]
 
     df=read_boundary()
 
@@ -518,7 +514,7 @@ if __name__ == "__main__":
 
     # roads=df.loc[road_start_index:road_end_index, "geometry"]
 
-    segments, segment_centers=supersegment(roads, buffer_distance, num_of_cars, cluster_method=cluster_method, timer=True, plot=True)
+    segments, segment_centers=supersegment(roads, buffer_distance, num_of_cars, cluster_method=cluster_method, timer=True, plot=False)
 
     print(np.array(segment_centers))
 

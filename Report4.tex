@@ -97,7 +97,7 @@
         \vspace*{1cm}
             
         \Huge
-        \textbf{Implementation Of A TTE System}
+        \textbf{Design and Implementation of A TTE System}
             
         \vspace{0.5cm}
         \LARGE
@@ -146,7 +146,7 @@ Our work is based on the model structure of TTE proposed in the blog.
 
 \subsubsection{Goal}
 Our ultimate goal (tentative) is to implement the industrial structure and apply it to the open source databases in China, then compare the performance with the state-of-the-art structures and find its application value.
-This semester, we will implement a TTE system base on the work we done in the last term, combining \textit{supersegment} and \textit{DeepTTE}.
+This semester, we will implement a TTE system base on the work we done in the last term, combining \textit{Supersegment} and TTI.
 We will try to work out an interactive application with graphical user interface. 
 
 \subsection{Introduction}
@@ -155,16 +155,10 @@ called \textbf{Travel Time Index (TTI)}. In addition, we proposed a new computin
 
 Breifly, we will state our work in this report as
 \begin{itemize}
-    \item xxx by 王宇辰
-    \item xxx by 崔俞崧
-    \item Code implementation of \textit{Supersegment} by 董正
+  \item Code implementation of \textit{Supersegment} by 董正
+  \item Computing TTI by 崔俞崧
+  \item UI Design by 王宇辰
 \end{itemize}
-
-\clearpage
-\section{xxx}
-
-\clearpage
-\section{xxx}
 
 \clearpage
 \section{Code Implementation of Supersegment}
@@ -318,6 +312,130 @@ clusters. Then use \texttt{intersection()} method in \textit{shapely} package to
   \caption{Segments}
   \label{fig: segments}
 \end{figure}
+
+\clearpage
+\section{Computing TTI}
+The TTI (Travel Time Index) is industry's most used evaluation index of urban congestion degree is the ratio of the actual travel time and the free flow time.
+\begin{equation}
+  TTI=\frac{\sum_{i=1}^N\frac{L_i}{V_i}\cdot W_i}{\sum_{i=1}^N\frac{L_i}{V_{free\_i}}\cdot W_i} \notag
+\end{equation}
+\begin{itemize}
+  \item $L_i$: length of the road
+  \item $W_i$: weight of road
+  \item $V_i$: real time traffic information
+  \item $V_{free\_i}$: free flow velocity
+\end{itemize}
+
+\subsection{Dataset}
+\begin{itemize}
+    \item Data source: Didi Chuxing GAIA Intiative
+    \item Region: Chengdu
+    \item Time: 2018-10-01 to 2018-12-01
+    \item Content:
+        \begin{itemize}
+            \item GPS track of taxis with timestamps
+            \item Coordinate of road and district boundaries
+            \item TTI and average speed of districts
+        \end{itemize}
+\end{itemize}
+
+\subsection{TTI calculation}
+Firstly, the trajectory data and road data are matched to obtain the trajectory points on the current road. This part of the processing is similar to the previous SuperSegment trajectory matching, and will not be repeated.
+
+After trajectory fitting, corresponding velocities of each trajectory can be calculated. After the velocity is calculated, these points need to be further processed to remove the velocity value that will cause a large error to the result.
+
+First, we need to deal with the point where the velocity is zero. Considering that this data set is Didi's taxi track, there are two kinds of conditions when the speed is zero: the driver is waiting for the passenger to get on and off the taxi, and the driver is waiting for the red light. As the process of the driver's waiting is not closely related to the road conditions, even if the road section is unimpeded, this situation will also occur, which will cause a large error to the result, so it needs to be removed. However, the time spent waiting for red lights, which is an important cause of traffic jams, needs to be reserved.
+
+After the above processing, we also need to consider the processing of abnormal speed. Since the collection of position data depends on GPS positioning, and the deviation of positioning during data collection will have a great impact on the calculation of average speed, it is necessary to conduct statistics on the obtained speed, analyze the number of data with deviation, and then remove abnormal data reasonably.
+
+\begin{figure}[htb]
+  \centering
+  \includegraphics[width=0.9\textwidth]{images/velocity_statistical_analysis.png}
+  \caption{Velocity Statistical Analysis}
+  \label{fig: vsa}
+\end{figure}
+
+In this statistical chart, there are a total of 6373 records. Among them, there were only 20 records whose speed exceeded 23m/s, accounting for less than 1\%. Also, according to common sense of life, the speed of vehicles in urban areas is rarely more than 80km/h. It is reasonable to conclude that speed records exceeding this value should be discarded as outliers.
+
+After the speed records are processed, the next step is to calculate the TTI. The calculation of TTI mainly focuses on the calculation of the average velocity of different time periods and the selection of free flow.
+
+It is not difficult to calculate the average speed in different periods, but to divide the speed according to time and get the average value. The main problem of this part is that the traffic flow in different time periods varies greatly. If the time period is divided too carefully, the data volume in this time period may be too little. And when the amount of data is too small, using these data to represent the whole period of road conditions will fluctuate greatly.
+
+\begin{figure}[htb]
+  \centering
+  \includegraphics[width=0.9\textwidth]{images/track_distribution.png}
+  \caption{Track Distribution}
+  \label{fig: td}
+\end{figure}
+
+As can be seen from the distribution of the number of tracks, the number of tracks in different time periods varies greatly.
+
+At present, the main solution to this problem is to use multi-day trajectory data to calculate. When the number of trajectories increases, there will be more trajectories even in a small period of time, thus reducing the fluctuation of TTI and making the calculation more accurate.
+
+\clearpage
+When the time interval is half an hour, the value of the average velocity and TTI:
+\begin{figure}[h]
+  \centering
+  \subfigure[Speed] {
+    \includegraphics[width=0.45\textwidth]{images/speed1.png}
+  }
+  \quad
+  \subfigure[TTI] {
+    \includegraphics[width=0.45\textwidth]{images/tti1.png}
+  }
+\end{figure}
+
+When the time interval is an hour, the value of the average velocity and TTI:
+\begin{figure}[h]
+  \centering
+  \subfigure[Speed] {
+    \includegraphics[width=0.45\textwidth]{images/speed2.png}
+  }
+  \quad
+  \subfigure[TTI] {
+    \includegraphics[width=0.45\textwidth]{images/tti2.png}
+  }
+\end{figure}
+
+In addition, it is also important to divide your time properly. Too detailed time division will aggravate the above problems, while rough division will not correctly reflect the TTI index of each time period. At present, after many experiments, the time interval is about an hour best.
+
+\clearpage
+\section{UI Design}
+
+      Our project based on database provided by DIDI. We mainly use driving track in Chengdu city. 
+      
+      I design this part as based on three parts of this project, supersegment, TTI calculation and TTE implementation.
+
+      \begin{figure}[H]
+          \centering
+          \includegraphics[width=0.6\textwidth]{images/baseline.png}
+          \newline
+          \caption{Baseline of Procedure}
+      \end{figure}
+      
+      Firstly, the base map is shown as below:
+
+      \begin{figure}[H]
+          \centering
+          \includegraphics[width=0.9\textwidth]{images/Initial.jpg}
+          \newline
+          \caption{Chengdu Map}
+      \end{figure}
+
+      We can choose points from the map and it will show the latitude and longtitude of the point.
+
+      Secondly, we display supersegment of this map, this will be done in this semester.
+
+      Thirdly, we display TTI of this map using different color to represent the congestion level, this will also be done in this semester.
+
+      Lastly, we can mark two points on the map, and with front end and back end interaction, shows the best path to go from one point to another realtime.
+
+      \begin{figure}[H]
+          \centering
+          \includegraphics[width=0.9\textwidth]{images/Choice.jpg}
+          \newline
+          \caption{Choosing points}
+      \end{figure}
 
 % \clearpage
 % \phantomsection
