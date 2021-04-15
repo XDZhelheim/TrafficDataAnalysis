@@ -337,18 +337,18 @@ def show_TTIfig(avg_speed, TTI_interval):
         y1 = func1(xnew)
         y2 = func2(xnew)
         y3 = func3(xnew)
-        plt.figure()
-        plt.title("smooth amount")
-        plt.plot(xnew,y1)
-        plt.show()
-        plt.figure()
-        plt.title("smooth speed")
-        plt.plot(xnew, y2)
-        plt.show()
-        plt.figure()
-        plt.title("smooth tti")
-        plt.plot(xnew, y3)
-        plt.show()
+        # plt.figure()
+        # plt.title("smooth amount")
+        # plt.plot(xnew,y1)
+        # plt.show()
+        # plt.figure()
+        # plt.title("smooth speed")
+        # plt.plot(xnew, y2)
+        # plt.show()
+        # plt.figure()
+        # plt.title("smooth tti")
+        # plt.plot(xnew, y3)
+        # plt.show()
 
         #画出各个时刻的轨迹数量
         plt.figure()
@@ -356,6 +356,7 @@ def show_TTIfig(avg_speed, TTI_interval):
         plt.xlabel('Time (h)')
         plt.ylabel('track numbers')
         plt.plot(lx,ly_amount)
+        plt.plot(lx,y1)
         # 画出平均速度的折线图
         plt.figure()
         plt.xlim([0,23])
@@ -364,6 +365,7 @@ def show_TTIfig(avg_speed, TTI_interval):
         plt.xlabel('Time (h)')
         plt.ylabel('Speed (m/s)')
         plt.plot(lx, ly_speed, linewidth=3, color='r', marker='o')  # 画折线图 （平均速度）
+        plt.plot(lx, y2, linewidth=3, color='r', marker='o')  # 画折线图 （平均速度）
         # plt.legend()
 
         # 画出TTI的折线图
@@ -375,6 +377,7 @@ def show_TTIfig(avg_speed, TTI_interval):
         plt.ylabel('TTI')
         plt.plot(lx, horizontal, label='second line', linewidth=1, color='b',linestyle='--')  # 画折线图 （平均速度）
         plt.plot(lx, ly_tti, label='Frist line', linewidth=3, color='r', marker='o')  #画折线图 （平均速度）
+        plt.plot(lx, y3, label='Frist line', linewidth=3, color='r', marker='o')  #画折线图 （平均速度）
         plt.show()
     return
 
@@ -382,6 +385,13 @@ def show_TTIfig(avg_speed, TTI_interval):
 def draw_road(roads,points):
     m = folium.Map(location=[30.20592, 103.21838])
 
+    road_list = []
+    for i in roads:
+        print(i)
+        print(type(i))
+        for j in i:
+            print(j)
+        road_list.append(i)
     folium.PolyLine(locations=roads, color='blue').add_to(m)
 
     m.save("1.html")
@@ -414,7 +424,7 @@ def cal_TTI(roads, buffer_distance, num_of_cars, cluster_method, plot=False, tim
     print(read2-read1)
     points = get_matched_points(roads, tracks, plot=plot, timer=timer)
 
-    draw_road(roads,points)
+    # draw_road(roads,points)
 
     # 2. 计算中点坐标和速度
     avg_speeeds = get_avg_speed(points, plot=plot, timer=timer, match=True, roads=roads)
@@ -435,7 +445,7 @@ if __name__ == "__main__":
 
     buffer_distance = 0.00004
 
-    num_of_cars = 100
+    num_of_cars = 190000
 
     # 羊市街+西玉龙街
     # roads = df.loc[(df["obj_id"] == 283504) | (df["obj_id"] == 283505) | (df["obj_id"] == 283506), "geom"]
