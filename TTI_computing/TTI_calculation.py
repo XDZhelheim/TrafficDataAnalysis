@@ -87,31 +87,32 @@ def get_tracks(num_of_cars=None, file_path=None, timer=True):
     """
 
     if timer:
-        start_read=time.time()
+        start_read = time.time()
 
     if file_path:
         with open(file_path, "r") as f:
-            tracks=json.load(f)
-            tracks=list(tracks)
+            tracks = json.load(f)
+            tracks = list(tracks)
 
         return tracks
 
-    df=pd.read_csv("E:/didi/城市交通指数和轨迹数据_2018/data/chengdushi_1001_1010.csv", nrows=num_of_cars, header=0, names=["track"], usecols=[2])
-    tracks=[]
+    df = pd.read_csv("E:/didi/城市交通指数和轨迹数据_2018/data/chengdushi_1001_1010.csv", nrows=num_of_cars, header=0,
+                     names=["track"], usecols=[2])
+    tracks = []
     for temp in df["track"]:
-        temp=temp.lstrip("[").rstrip("]")
-        temp=temp.split(", ") # 注意分隔符是逗号+空格
+        temp = temp.lstrip("[").rstrip("]")
+        temp = temp.split(", ")  # 注意分隔符是逗号+空格
         for i in range(len(temp)):
-            temp[i]=temp[i].split(" ")
+            temp[i] = temp[i].split(" ")
         for item in temp:
-            item[0]=float(item[0])
-            item[1]=float(item[1])
-            item[2]=int(item[2])
+            item[0] = float(item[0])
+            item[1] = float(item[1])
+            item[2] = int(item[2])
         tracks.append(temp)
 
     if timer:
-        end_read=time.time()
-        print("读轨迹用时:", str(datetime.timedelta(seconds=end_read-start_read)))
+        end_read = time.time()
+        print("读轨迹用时:", str(datetime.timedelta(seconds=end_read - start_read)))
 
     return tracks
 
@@ -249,7 +250,7 @@ def get_avg_speed(points, match=True, roads=None, plot=False, timer=True):
             t2 = track[i + 1]['time']
             dis = LL2Dist(p1.x, p1.y, p2.x, p2.y)
             speed = dis / (t2 - t1)
-            if (speed == 0 )|(speed > 23) :
+            if (speed == 0) | (speed > 23):
                 continue
             avg_speeds[n].append([speed, t1])
 
@@ -283,7 +284,7 @@ def show_Speed(avg_speeds):
     plt.figure()
     # n = 6
     # bins = range(1,n+2)
-    freq,bins,_ = plt.hist(speed_list,rwidth=0.8)
+    freq, bins, _ = plt.hist(speed_list, rwidth=0.8)
     plt.title('Velocity statistical analysis')
     plt.xlabel('speed (m/s)')
     plt.ylabel('amount of different speed')
@@ -293,7 +294,7 @@ def show_Speed(avg_speeds):
     return
 
 
-def show_TTIfig(avg_speed, TTI_interval):
+def show_TTIfig(avg_speed, TTI_interval, plot):
     speed_map = [{} for i in range(len(avg_speed))]
     for i in range(int(1440 / TTI_interval)):
         for x_time in speed_map:
@@ -304,85 +305,69 @@ def show_TTIfig(avg_speed, TTI_interval):
             format_time = time.localtime(tmp_time)
             minutes = format_time.tm_hour * 60 + format_time.tm_min
             speed_map[n][int(minutes / TTI_interval)].append(i[0])
-
-    for each_map in (speed_map):
+    TTI = []
+    for each_map in speed_map:
         lx = []
         ly_speed = []
         ly_tti = []
         ly_amount = []
         horizontal = []
-
         for x_time in each_map:
             speed_list = each_map[x_time]
             list_size = len(speed_list)
-            random_list = random.sample(speed_list, int(list_size / 50))
             avg = np.mean(speed_list)
-            lx.append(x_time / (60/TTI_interval))
+            lx.append(x_time / (60 / TTI_interval))
             ly_speed.append(avg)
             ly_amount.append(len(speed_list))
             horizontal.append(1)
-            # for x_time in speed_list:
-            #     plt.scatter(x_time,avg, marker='.')  # 打散点图  （各个速度
 
         free_speed = max(ly_speed)
         for ever_speed in ly_speed:
             ly_tti.append(free_speed / ever_speed)
 
-        xnew = np.arange(0, lx[-1], 0.01)
-        # 实现函数
-        func1 = interpolate.interp1d(lx, ly_amount, kind='cubic')
-        func2 = interpolate.interp1d(lx, ly_speed, kind='cubic')
-        func3 = interpolate.interp1d(lx, ly_tti, kind='cubic')
-        # 利用xnew和func函数生成ynew,xnew数量等于ynew数量
-        y1 = func1(xnew)
-        y2 = func2(xnew)
-        y3 = func3(xnew)
-        # plt.figure()
-        # plt.title("smooth amount")
-        # plt.plot(xnew,y1)
-        # plt.show()
-        # plt.figure()
-        # plt.title("smooth speed")
-        # plt.plot(xnew, y2)
-        # plt.show()
-        # plt.figure()
-        # plt.title("smooth tti")
-        # plt.plot(xnew, y3)
-        # plt.show()
+        # xnew = np.arange(0, lx[-1], 0.01)
+        # # 实现函数
+        # func1 = interpolate.interp1d(lx, ly_amount, kind='cubic')
+        # func2 = interpolate.interp1d(lx, ly_speed, kind='cubic')
+        # func3 = interpolate.interp1d(lx, ly_tti, kind='cubic')
+        # # 利用xnew和func函数生成ynew,xnew数量等于ynew数量
+        # y1 = func1(xnew)
+        # y2 = func2(xnew)
+        # y3 = func3(xnew)
 
-        #画出各个时刻的轨迹数量
-        plt.figure()
-        plt.title('track distribution')
-        plt.xlabel('Time (h)')
-        plt.ylabel('track numbers')
-        plt.plot(lx,ly_amount)
-        plt.plot(lx,y1)
-        # 画出平均速度的折线图
-        plt.figure()
-        plt.xlim([0,23])
-        plt.ylim([math.floor(min(ly_speed)),math.ceil(max(ly_speed))])
-        plt.title('Speed calculation')
-        plt.xlabel('Time (h)')
-        plt.ylabel('Speed (m/s)')
-        plt.plot(lx, ly_speed, linewidth=3, color='r', marker='o')  # 画折线图 （平均速度）
-        plt.plot(lx, y2, linewidth=3, color='r', marker='o')  # 画折线图 （平均速度）
-        # plt.legend()
-
-        # 画出TTI的折线图
-        plt.figure()
-        plt.xlim([0,23])
-        # plt.ylim([0.9])
-        plt.title('TTI calculation')
-        plt.xlabel('Time (h)')
-        plt.ylabel('TTI')
-        plt.plot(lx, horizontal, label='second line', linewidth=1, color='b',linestyle='--')  # 画折线图 （平均速度）
-        plt.plot(lx, ly_tti, label='Frist line', linewidth=3, color='r', marker='o')  #画折线图 （平均速度）
-        plt.plot(lx, y3, label='Frist line', linewidth=3, color='r', marker='o')  #画折线图 （平均速度）
-        plt.show()
-    return
+        TTI.append([lx,ly_tti])
+        # 画出各个时刻的轨迹数量
+        if plot:
+            plt.figure()
+            plt.title('track distribution')
+            plt.xlabel('Time (h)')
+            plt.ylabel('track numbers')
+            plt.plot(lx, ly_amount)
+            # plt.plot(lx, y1)
+            # 画出平均速度的折线图
+            plt.figure()
+            plt.xlim([0, 23])
+            # plt.ylim([math.floor(min(ly_speed)), math.ceil(max(ly_speed))])
+            plt.title('Speed calculation')
+            plt.xlabel('Time (h)')
+            plt.ylabel('Speed (m/s)')
+            plt.plot(lx, ly_speed, linewidth=3, color='r', marker='o')  # 画折线图 （平均速度）
+            # plt.plot(lx, y2, linewidth=3, color='r', marker='o')  # 画折线图 （平均速度）
+            # 画出TTI的折线图
+            plt.figure()
+            plt.xlim([0, 23])
+            # plt.ylim([0.9])
+            plt.title('TTI calculation')
+            plt.xlabel('Time (h)')
+            plt.ylabel('TTI')
+            plt.plot(lx, horizontal, label='second line', linewidth=1, color='b', linestyle='--')  # 画折线图 （平均速度）
+            plt.plot(lx, ly_tti, label='Frist line', linewidth=3, color='r', marker='o')  # 画折线图 （平均速度）
+            # plt.plot(lx, y3, label='Frist line', linewidth=3, color='r', marker='o')  # 画折线图 （平均速度）
+            plt.show()
+    return TTI
 
 
-def draw_road(roads,points):
+def draw_road(roads, points):
     m = folium.Map(location=[30.20592, 103.21838])
 
     road_list = []
@@ -401,7 +386,7 @@ def draw_road(roads,points):
     return
 
 
-def cal_TTI(roads, buffer_distance, num_of_cars, cluster_method, plot=False, timer=True):
+def cal_TTI(roads, buffer_distance, num_of_cars, plot, timer,TTI_interval):
     if timer:
         start = time.time()
 
@@ -413,7 +398,7 @@ def cal_TTI(roads, buffer_distance, num_of_cars, cluster_method, plot=False, tim
     # 1. GPS 点匹配到道路上
     read1 = time.time()
     tracks = []
-    for i in range(int(num_of_cars/10000 + 1)):
+    for i in range(int(num_of_cars / 10000 + 1)):
         with open('E:/didi/城市交通指数和轨迹数据_2018/data/track_' + str(i * 10000) + '_cars', "rb") as f:
             tmp_read = pickle.load(f)
             tracks.extend(tmp_read)
@@ -421,7 +406,7 @@ def cal_TTI(roads, buffer_distance, num_of_cars, cluster_method, plot=False, tim
     tracks = tracks[:num_of_cars]
     read2 = time.time()
     print('read track used time')
-    print(read2-read1)
+    print(read2 - read1)
     points = get_matched_points(roads, tracks, plot=plot, timer=timer)
 
     # draw_road(roads,points)
@@ -429,30 +414,27 @@ def cal_TTI(roads, buffer_distance, num_of_cars, cluster_method, plot=False, tim
     # 2. 计算中点坐标和速度
     avg_speeeds = get_avg_speed(points, plot=plot, timer=timer, match=True, roads=roads)
 
-
     # 异常值处理  将 速度大于23的舍去
-    show_Speed(avg_speeeds)
-
+    if plot:
+        show_Speed(avg_speeeds)
 
     # 3. 按照时间将这些点分类，得到每个时间段的平均速度
-    show_TTIfig(avg_speeeds, TTI_interval=60)
-
+    TTI = show_TTIfig(avg_speeeds,TTI_interval,plot)
+    return TTI
 
 if __name__ == "__main__":
-    methods = ("kmeans", "meanshift")
-
     df = read_boundary()
 
     buffer_distance = 0.00004
 
-    num_of_cars = 190000
+    num_of_cars = 1000
+
+    TTI_interval = 30
 
     # 羊市街+西玉龙街
     # roads = df.loc[(df["obj_id"] == 283504) | (df["obj_id"] == 283505) | (df["obj_id"] == 283506), "geom"]
-    roads = df.loc[(df["obj_id"] == 283506), "geom"]
+    roads = df.loc[ (df["obj_id"] == 283505) | (df["obj_id"] == 283506), "geom"]
 
-    # road_start_index=21
-    # road_end_index=22
-    # roads=df.loc[road_start_index:road_end_index, "geometry"]
+    TTI = cal_TTI(roads, buffer_distance, num_of_cars, timer=True, plot=False,TTI_interval=TTI_interval)
 
-    cal_TTI(roads, buffer_distance, num_of_cars, cluster_method=methods[0], timer=True, plot=False)
+    print(TTI) # 返回结果是一个数组，为 [ans1,ans2,...]的形式，每个ans为输入道路对应的 TTI值 该TTI值，以[时间，TTI]的方式记录
