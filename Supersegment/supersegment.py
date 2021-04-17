@@ -1,14 +1,16 @@
+import datetime
+import json
+import time
+
+import geopandas as gp
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import geopandas as gp
-from shapely.geometry import Point, MultiPoint
 import shapely.wkt as wkt
-from sklearn.cluster import KMeans, MeanShift
-import time
-import datetime
 from pyproj import CRS
-import json
+from shapely.geometry import MultiPoint, Point
+from sklearn.cluster import KMeans, MeanShift
+from sklearn import metrics
 
 colors=["#A1E2E6", "#E6BDA1", "#B3A16B", "#678072", "#524A4A"]
 
@@ -44,33 +46,53 @@ def show_geom(obj, color, title, cmap=None):
     fig.canvas.set_window_title(title)
     plt.show()
 
-def kmeans(kmeans_input, k=None, plot=False):
-    # TODO: 选择 k 的算法
+def kmeans(kmeans_input, k=None, metric=0, plot=False):
+    # XXX: 选择 k 的算法
+
     if not k:
-        # 利用SSE选择k, 手肘法
-        SSE=[]  # 存放每次结果的误差平方和
-        for k in range(1, 9):
-            estimator=KMeans(n_clusters=k)
-            estimator.fit(kmeans_input)
-            SSE.append(estimator.inertia_)
+        # 利用SSE选择k, 手肘法 
+        if metric==0:
+            SSE=[]  # 存放每次结果的误差平方和
+            for k in range(1, 9):
+                estimator=KMeans(n_clusters=k)
+                estimator.fit(kmeans_input)
+                SSE.append(estimator.inertia_)
 
-        diff=[]
-        for i in range(len(SSE)-1):
-            diff.append(SSE[i]-SSE[i+1])
+            diff=[]
+            for i in range(len(SSE)-1):
+                diff.append(SSE[i]-SSE[i+1])
 
-        for i in range(len(diff)):
-            if diff[i]<=diff[0]/20:
-                k=i+1
-                break
+            for i in range(len(diff)):
+                if diff[i]<=diff[0]/20:
+                    best_k=i+1
+                    break
 
-        if plot:
-            X = range(1, 9)
-            plt.subplot(221)
-            plt.xlabel('k')
-            plt.ylabel('SSE')
-            plt.plot(X, SSE, 'o-')
+            if plot:
+                X=range(1, 9)
+                plt.subplot(221)
+                plt.xlabel('k')
+                plt.ylabel('SSE')
+                plt.plot(X, SSE, 'o-')
 
-    km_model=KMeans(n_clusters=k)
+        # 使用 Calinski-Harabaz Index 评估, 越大越好 (不建议用)
+        elif metric==1:
+            best_k=0; best_score=-1
+            for k in range(2, 9):
+                estimator=KMeans(n_clusters=k)
+                estimator.fit(kmeans_input)
+                score=metrics.calinski_harabasz_score(kmeans_input, estimator.labels_)
+
+                if score>best_score:
+                    best_k=k
+                    best_score=score
+
+            if plot:
+                print("best_k = {}, best_score = {}".format(best_k, best_score))
+
+    else:
+        best_k=k
+
+    km_model=KMeans(n_clusters=best_k)
     km_model.fit(kmeans_input)
 
     # 分类信息
@@ -84,8 +106,8 @@ def kmeans(kmeans_input, k=None, plot=False):
 
         # 2d所有点
         plt.subplot(223)
-        plt.scatter(kmeans_input[:, 0], kmeans_input[:, 1], c=labels, cmap=plt.cm.tab10, s=30)
-        for i in range(k):
+        plt.scatter(kmeans_input[:, 0], kmeans_input[:, 1], c=labels, cmap=plt.cm.tab10, s=8)
+        for i in range(best_k):
             plt.annotate(str(i+1), (centers[i, 0], centers[i, 1]))
 
         # 3d 中心点 s为大小
@@ -95,7 +117,7 @@ def kmeans(kmeans_input, k=None, plot=False):
         # ax.axis("off")
         plt.show()
 
-    return k, labels, centers
+    return best_k, labels, centers
 
 def read_boundary():
     df=pd.read_table("./TrafficDataAnalysis/boundary.txt")
@@ -302,12 +324,12 @@ def cluster_kmeans(midpoints, k=None, kmeans_details_plot=False, timer=True, plo
             kmeans_input.append([midpoint["coord"].x, midpoint["coord"].y, midpoint["speed"]])
         kmeans_input=np.array(kmeans_input)
 
-        k, labels, centers=kmeans(kmeans_input, k, kmeans_details_plot)
+        best_k, labels, centers=kmeans(kmeans_input, k, plot=kmeans_details_plot, metric=0)
 
         midpoint_labels.append(labels)
         segment_centers.append(centers)
 
-        if plot:
+        if plot and not kmeans_details_plot:
             # 调整不同配色
             if i%2:
                 cmap=plt.cm.tab10
@@ -315,14 +337,14 @@ def cluster_kmeans(midpoints, k=None, kmeans_details_plot=False, timer=True, plo
                 cmap=plt.cm.Paired
 
             plt.scatter(kmeans_input[:, 0], kmeans_input[:, 1], c=labels, cmap=cmap, s=1)
-            for j in range(k):
+            for j in range(best_k):
                 plt.annotate("{}-{}".format(i+1, j+1), (centers[j, 0], centers[j, 1]))
 
     if timer:
         end_kmeans=time.time()
         print("KMeans 用时:", str(datetime.timedelta(seconds=end_kmeans-start_kmeans)))
 
-    if plot:
+    if plot and not kmeans_details_plot:
         plt.show()
 
     return midpoint_labels, segment_centers
@@ -422,6 +444,9 @@ def get_segments(roads, midpoints, midpoint_labels, plot=False, timer=True):
             segment_points=gp.GeoSeries(segment_points)
             convex_hull=segment_points.convex_hull.iloc[0]
             segment=roads.iloc[i].intersection(convex_hull)
+            # XXX: 数据量过小的时候有可能会没有交集
+            if segment.is_empty:
+                continue
             segments[i].append(segment)
             if plot:
                 segments_forplot.append(segment)
@@ -431,8 +456,6 @@ def get_segments(roads, midpoints, midpoint_labels, plot=False, timer=True):
         print("分割 segment 用时:", str(datetime.timedelta(seconds=end_segment-start_segment)))
 
     if plot:
-        # df_segments=gp.GeoDataFrame(geometry=segments_forplot)
-        # show_geom(df_segments, "green", "segments")
         se=gp.GeoSeries(segments_forplot)
         show_geom(se, None, "segments", cmap=plt.cm.tab10)
 
@@ -446,7 +469,7 @@ def supersegment(roads_in, buffer_distance, num_of_cars, cluster_method, plot=Fa
     - Input:
         - roads_in: GeoSeries
     - Parameters: 
-        - buffer_distance
+        - buffer_distance (recommend 0.00004)
         - num_of_cars
         - cluster_method ("kmeans" or "meanshift")
         - plot: bool, default=False
@@ -471,7 +494,7 @@ def supersegment(roads_in, buffer_distance, num_of_cars, cluster_method, plot=Fa
 
     # 1. GPS 点匹配到道路上
     if num_of_cars in (2000, 5000, 10000, 20000):
-        tracks=get_tracks(file_path="./TrafficDataAnalysis/track_"+str(num_of_cars)+"_cars.json", timer=timer)
+        tracks=get_tracks(file_path="./TrafficDataAnalysis/track_{}_cars.json".format(str(num_of_cars)), timer=timer)
     else:
         tracks=get_tracks(num_of_cars, timer=timer)
 
