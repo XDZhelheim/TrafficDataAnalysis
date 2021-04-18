@@ -9,3 +9,12 @@
 
 src/
 __pycache__/
+
+# shapefiles
+*.cpg
+*.dbf
+*.shp
+*.shx
+*.prj
+
+supersegment_output/
