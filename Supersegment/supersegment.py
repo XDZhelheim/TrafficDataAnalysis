@@ -1,5 +1,6 @@
 import datetime
 import json
+import os
 import time
 
 import geopandas as gp
@@ -12,7 +13,14 @@ from shapely.geometry import MultiPoint, Point
 from sklearn.cluster import KMeans, MeanShift
 from sklearn import metrics
 
+# work directory
+work_path="./TrafficDataAnalysis/"
+
 colors=["#A1E2E6", "#E6BDA1", "#B3A16B", "#678072", "#524A4A"]
+
+def set_work_path(p: str):
+    global work_path
+    work_path=p
 
 def show_district_and_road(df, district_line_number_start, district_line_number_end, road_line_number_start, road_line_number_end):
     """
@@ -30,7 +38,7 @@ def show_district_and_road(df, district_line_number_start, district_line_number_
 
     plt.show()
 
-def show_geom(obj, color, title, cmap=None):
+def show_geom(obj, color, title, cmap=None, show=True, write_file=False):
     """
     - 画几何图形
     - obj 为 GeoDataFrame/GeoSeries
@@ -44,7 +52,12 @@ def show_geom(obj, color, title, cmap=None):
     plt.title(title, fontsize=15, fontname="Source Han Serif CN", color="black")
     ax.axis("off")
     fig.canvas.set_window_title(title)
-    plt.show()
+
+    if show:
+        plt.show()
+
+    if write_file:
+        plt.savefig(work_path+"supersegment_output/"+title+".png")
 
 def kmeans(kmeans_input, k=None, metric=0, plot=False):
     # XXX: 选择 k 的算法
@@ -120,7 +133,7 @@ def kmeans(kmeans_input, k=None, metric=0, plot=False):
     return best_k, labels, centers
 
 def read_boundary():
-    df=pd.read_table("./TrafficDataAnalysis/boundary.txt")
+    df=pd.read_table(work_path+"boundary.txt")
     df['geometry']=df['geometry'].apply(wkt.loads)
     df=gp.GeoDataFrame(df)
     df.crs=CRS("epsg:4326")
@@ -157,7 +170,7 @@ def get_tracks(num_of_cars=None, file_path=None, timer=True):
 
         return tracks
 
-    df=pd.read_csv("./TrafficDataAnalysis/chengdushi_1001_1010.csv", nrows=num_of_cars, header=0, names=["track"], usecols=[2])
+    df=pd.read_csv(work_path+"chengdushi_1001_1010.csv", nrows=num_of_cars, header=0, names=["track"], usecols=[2])
     tracks=[]
     for temp in df["track"]:
         temp=temp.lstrip("[").rstrip("]")
@@ -414,7 +427,7 @@ def cluster_meanshift(midpoints, timer=True, plot=True):
 
     return midpoint_labels, segment_centers
 
-def get_segments(roads, midpoints, midpoint_labels, plot=False, timer=True):
+def get_segments(roads, midpoints, midpoint_labels, plot=False, timer=True, write_file=True):
     """
     ```
     [
@@ -427,7 +440,7 @@ def get_segments(roads, midpoints, midpoint_labels, plot=False, timer=True):
     if timer:
         start_segment=time.time()
 
-    if plot:
+    if plot or write_file:
         segments_forplot=[]
 
     # len(roads_in)==len(roads)==len(points)==len(midpoints) 第一维都是有几条路
@@ -448,23 +461,24 @@ def get_segments(roads, midpoints, midpoint_labels, plot=False, timer=True):
             if segment.is_empty:
                 continue
             segments[i].append(segment)
-            if plot:
+            if plot or write_file:
                 segments_forplot.append(segment)
 
     if timer:
         end_segment=time.time()
         print("分割 segment 用时:", str(datetime.timedelta(seconds=end_segment-start_segment)))
 
-    if plot:
+    if plot or write_file:
         se=gp.GeoSeries(segments_forplot)
-        show_geom(se, None, "segments", cmap=plt.cm.tab10)
+        show_geom(se, None, "segments", cmap=plt.cm.tab10, show=plot, write_file=write_file)
 
-    if plot:
-        plt.show()
+    if write_file:
+        se.to_file(work_path+"supersegment_output/segment_result.shp", driver="ESRI Shapefile", encoding="utf-8")
+        se.to_file(work_path+"supersegment_output/segment_result.json", driver="GeoJSON", encoding="utf-8")
 
     return segments
 
-def supersegment(roads_in, buffer_distance, num_of_cars, cluster_method, plot=False, timer=True):
+def supersegment(roads_in, buffer_distance, num_of_cars, cluster_method, plot=False, timer=True, write_file=True):
     """
     - Input:
         - roads_in: GeoSeries
@@ -484,6 +498,12 @@ def supersegment(roads_in, buffer_distance, num_of_cars, cluster_method, plot=Fa
     if cluster_method not in ("kmeans", "meanshift"):
         raise Exception("Invalid cluster method")
 
+    if write_file:
+        try:
+            os.mkdir(work_path+"supersegment_output")
+        except FileExistsError:
+            pass
+
     if timer:
         start=time.time()
 
@@ -494,7 +514,7 @@ def supersegment(roads_in, buffer_distance, num_of_cars, cluster_method, plot=Fa
 
     # 1. GPS 点匹配到道路上
     if num_of_cars in (2000, 5000, 10000, 20000):
-        tracks=get_tracks(file_path="./TrafficDataAnalysis/track_{}_cars.json".format(str(num_of_cars)), timer=timer)
+        tracks=get_tracks(file_path=work_path+"track_{}_cars.json".format(str(num_of_cars)), timer=timer)
     else:
         tracks=get_tracks(num_of_cars, timer=timer)
 
@@ -510,7 +530,7 @@ def supersegment(roads_in, buffer_distance, num_of_cars, cluster_method, plot=Fa
         midpoint_labels, segment_centers=cluster_meanshift(midpoints, timer=timer, plot=plot)
 
     # 4. 凸包+交集求出 Line 类型的 segment
-    segments=get_segments(roads_in, midpoints, midpoint_labels, timer=timer, plot=plot)
+    segments=get_segments(roads_in, midpoints, midpoint_labels, timer=timer, plot=plot, write_file=write_file)
 
     if timer:
         end=time.time()
@@ -537,7 +557,7 @@ if __name__ == "__main__":
 
     # roads=df.loc[road_start_index:road_end_index, "geometry"]
 
-    segments, segment_centers=supersegment(roads, buffer_distance, num_of_cars, cluster_method=cluster_method, timer=True, plot=False)
+    segments, segment_centers=supersegment(roads, buffer_distance, num_of_cars, cluster_method=cluster_method, timer=True, plot=False, write_file=True)
 
     print(np.array(segment_centers))
 
