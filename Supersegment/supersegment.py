@@ -98,8 +98,8 @@ def kmeans(kmeans_input, k=None, plot=False):
     return k, labels, centers
 
 def read_boundary():
-    df=pd.read_table("./TrafficDataAnalysis/boundary.txt")
-    df['geometry']=df['geometry'].apply(wkt.loads)
+    df = pd.read_csv("E:/didi/城市交通指数和轨迹数据_2018/data/boundary.txt", sep='\t')
+    df['geom']=df['geom'].apply(wkt.loads)
     df=gp.GeoDataFrame(df)
     df.crs=CRS("epsg:4326")
 
@@ -135,7 +135,7 @@ def get_tracks(num_of_cars=None, file_path=None, timer=True):
 
         return tracks
 
-    df=pd.read_csv("./TrafficDataAnalysis/chengdushi_1001_1010.csv", nrows=num_of_cars, header=0, names=["track"], usecols=[2])
+    df=pd.read_csv("E:/didi/城市交通指数和轨迹数据_2018/data/chengdushi_1001_1010.csv", nrows=num_of_cars, header=0, names=["track"], usecols=[2])
     tracks=[]
     for temp in df["track"]:
         temp=temp.lstrip("[").rstrip("]")
@@ -471,7 +471,7 @@ def supersegment(roads_in, buffer_distance, num_of_cars, cluster_method, plot=Fa
 
     # 1. GPS 点匹配到道路上
     if num_of_cars in (2000, 5000, 10000, 20000):
-        tracks=get_tracks(file_path="./TrafficDataAnalysis/track_"+str(num_of_cars)+"_cars.json", timer=timer)
+        tracks=get_tracks(file_path="E:/didi/城市交通指数和轨迹数据_2018/data/track_"+str(num_of_cars)+"_cars.json", timer=timer)
     else:
         tracks=get_tracks(num_of_cars, timer=timer)
 
@@ -507,7 +507,7 @@ if __name__ == "__main__":
     num_of_cars=10000
 
     # 羊市街+西玉龙街
-    roads=df.loc[(df["obj_id"]==283504) | (df["obj_id"]==283505) | (df["obj_id"]==283506), "geometry"]
+    roads=df.loc[(df["obj_id"]==283504) | (df["obj_id"]==283505) | (df["obj_id"]==283506), "geom"]
 
     # road_start_index=21
     # road_end_index=22
