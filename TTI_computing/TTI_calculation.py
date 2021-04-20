@@ -128,6 +128,10 @@ def get_matched_points(roads, tracks, plot=False, timer=True):
 
 
 def LL2Dist(Lat1, Lng1, Lat2, Lng2):
+    """
+    - 得到两个坐标点之间的距离，单位为 米
+    """
+
     ra = 6378137.0  # radius of equator: meter
     rb = 6356752.3142451  # radius of polar: meter
     flatten = (ra - rb) / ra  # Partial rate of the earth
@@ -191,6 +195,9 @@ def get_avg_speed(points, match=True, roads=None, plot=False, timer=True):
 
 
 def show_speed(avg_speeds):
+    """
+    - 显示当前的速度分布图，展示不同速度所占的比例
+    """
     speed_list = []
     for each_list in avg_speeds:
         for speed in each_list:
@@ -199,20 +206,19 @@ def show_speed(avg_speeds):
     for i in speed_list:
         if i == 0:
             z_cnt += 1
-    print(z_cnt)
-    print(len(speed_list))
     plt.figure()
     freq, bins, _ = plt.hist(speed_list, rwidth=0.8)
     plt.title('Velocity statistical analysis')
     plt.xlabel('speed (m/s)')
     plt.ylabel('amount of different speed')
     plt.show()
-    for i in freq:
-        print(i)
-    return
+
 
 
 def show_TTIfig(avg_speed, TTI_interval, plot):
+    """
+    - 利用速度数据计算各时刻的TTI，将速度以及计算得到的TTI利用折线图的方式进行可视化
+    """
     speed_map = [{} for i in range(len(avg_speed))]
     for i in range(int(1440 / TTI_interval)):
         for x_time in speed_map:
@@ -276,6 +282,9 @@ def show_TTIfig(avg_speed, TTI_interval, plot):
 
 
 def plt_figure(title, xlabel, ylabel, x_list, y_list,x_lim,y_lim):
+    """
+    - 通过各参数，画出一张折线图
+    """
     plt.figure()
     plt.title(title)
     plt.xlabel(xlabel)
@@ -285,26 +294,39 @@ def plt_figure(title, xlabel, ylabel, x_list, y_list,x_lim,y_lim):
     if y_lim:
         plt.ylim(y_lim)
     plt.plot(x_list, y_list)
-    return
 
 
 def draw_road(roads):
+    """
+    - 在folium中，画出筛选过后的路段在地图上的显示
+    """
     m = folium.Map(location=[30.20592, 103.21838])
     road_list = []
     for i in roads:
-        print(i)
-        print(type(i))
-        for j in i:
-            print(j)
+        # print(i)
+        # print(type(i))
+        # for j in i:
+        #     print(j)
         road_list.append(i)
     folium.PolyLine(locations=roads, color='blue').add_to(m)
     m.save("1.html")
     import webbrowser
     webbrowser.open("1.html")
-    return
 
 
 def cal_TTI(roads, buffer_distance, num_of_cars, plot, timer, TTI_interval):
+    """
+    - Input:
+        - roads: GeoSeries
+    - Parameters:
+        - buffer_distance (recommend 0.00004)
+        - num_of_cars
+        - plot: bool, default=False
+        - timer: bool, default=True
+    - Returns:
+        - TTI list [[time,tmp_TTI],[time,tmp_TTI],... ]
+    """
+
     if timer:
         start = time.time()
 
@@ -322,8 +344,8 @@ def cal_TTI(roads, buffer_distance, num_of_cars, plot, timer, TTI_interval):
             tracks.extend(tmp_read)
     tracks = tracks[:num_of_cars]
     read2 = time.time()
-    print('read track used time')
-    print(read2 - read1)
+    if timer:
+        print('读取轨迹用时:',str(read2 - read1))
     points = get_matched_points(roads, tracks, plot=plot, timer=timer)
     # 2. 计算中点坐标和速度
     avg_speeeds = get_avg_speed(points, plot=plot, timer=timer, match=True, roads=roads)
@@ -332,6 +354,10 @@ def cal_TTI(roads, buffer_distance, num_of_cars, plot, timer, TTI_interval):
         show_speed(avg_speeeds)
     # 3. 按照时间将这些点分类，得到每个时间段的平均速度
     TTI = show_TTIfig(avg_speeeds, TTI_interval, plot)
+    end = time.time()
+    if timer:
+        print("总共用时为：",str(end-start))
+
     return TTI
 
 
@@ -340,7 +366,7 @@ if __name__ == "__main__":
 
     buffer_distance = 0.00004
 
-    num_of_cars = 100000
+    num_of_cars = 10000
 
     TTI_interval = 30
 
