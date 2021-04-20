@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+
+<head>
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+    <script>
+        L_NO_TOUCH = false;
+        L_DISABLE_3D = false;
+    </script>
+
+    <style>
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        #chengdu_map {
+            position: relative;
+            width: 100.0%;
+            height: 100.0%;
+            left: 0.0%;
+            top: 0.0%;
+        }
+    </style>
+
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.6.0/dist/leaflet.js"></script>
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.js"></script>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.6.0/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap-theme.min.css" />
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.6.3/css/font-awesome.min.css" />
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.css" />
+    <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/gh/python-visualization/folium/folium/templates/leaflet.awesome.rotate.min.css" />
+
+    <meta name="viewport" content="width=device-width,
+                initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+
+    <title>成都市地图</title>
+
+</head>
+
+<body>
+    <button onclick="show_supersegment()">show supersegment</button>
+    <!-- <a href="TTI.html"><input type="button" value='show TTI'></a>
+    <a href="TTE.html"><input type="button" value='show TTE'></a> -->
+    <label id="p1"></label>
+    <label id="p2"></label>
+    <div class="folium-map" id="chengdu_map"></div>
+</body>
+
+<script>
+    let a = 0;
+    let move = false;
+    let pointer1 = null;
+    let pointer2 = null;
+
+    const chengdu_map = L.map(
+        "chengdu_map",
+        {
+            center: [30.6669, 104.0655],
+            crs: L.CRS.EPSG3857,
+            zoom: 17,
+            zoomControl: true,
+            preferCanvas: false,
+        }
+    );
+
+    L.tileLayer(
+        "http://webrd02.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=7&x={x}&y={y}&z={z}",
+        {
+            attribution: "Gao De Map",
+        }
+    ).addTo(chengdu_map);
+
+    function newMarker(e) {
+        if (a === 2) {
+            return;
+        }
+        a++;
+        const new_mark = L.marker().setLatLng(e.latlng).addTo(chengdu_map);
+        new_mark.dragging.enable();
+        if (pointer1 == null) {
+            new_mark._index_ = 1;
+            pointer1 = new_mark;
+        } else {
+            new_mark._index_ = 2;
+            pointer2 = new_mark;
+        }
+        new_mark.on('dblclick', function (e) {
+            chengdu_map.removeLayer(e.target)
+            document.getElementById('p' + new_mark._index_).innerText = "";
+            if (new_mark._index_ === 1) {
+                pointer1 = null;
+            } else {
+                pointer2 = null;
+            }
+            a--;
+        })
+        new_mark.on('mousemove', function (e) {
+            if (move)
+                document.getElementById('p' + new_mark._index_).innerText = "(" + e.latlng.lat.toFixed(4) + "," + e.latlng.lng.toFixed(4) + ")";
+        })
+        new_mark.on('mouseup', function () {
+            move = false
+        })
+        new_mark.on('mousedown', function () {
+            move = true
+        })
+        const lat = e.latlng.lat.toFixed(4),
+            lng = e.latlng.lng.toFixed(4);
+        new_mark.bindPopup("Latitude: " + lat + "<br>Longitude: " + lng);
+        document.getElementById('p' + new_mark._index_).innerText = "(" + lat + "," + lng + ")";
+    }
+
+    chengdu_map.on('click', newMarker);
+
+    function show_supersegment(param) {
+        $.getJSON("/show_supersegment", {"param": param}).done(
+            function(data) {
+                var supersegment_layer = L.geoJson(
+                    data,
+                    {
+                        style: function(feature) {
+                            return {
+                                color: 'blue',
+                                // "weight": 3,
+                                // "opacity": 0.85
+                            };
+                        }
+                    }
+                );
+                supersegment_layer.addTo(chengdu_map);
+            }
+        )
+    }
+</script>
