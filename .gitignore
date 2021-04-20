@@ -7,7 +7,6 @@
 *.xml
 .idea
 
-src/
 __pycache__/
 
 # shapefiles
