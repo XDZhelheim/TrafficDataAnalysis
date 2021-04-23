@@ -330,6 +330,8 @@ def cluster_kmeans(midpoints, k=None, kmeans_details_plot=False, timer=True, plo
 
     for i in range(len(midpoints)):
         if not midpoints[i]: # 没有车经过这条路
+            midpoint_labels.append(np.array([]))
+            segment_centers.append(np.array([]))
             continue
 
         kmeans_input=[]
@@ -392,6 +394,8 @@ def cluster_meanshift(midpoints, timer=True, plot=True):
 
     for i in range(len(midpoints)):
         if not midpoints[i]: # 没有车经过这条路
+            midpoint_labels.append(np.array([]))
+            segment_centers.append(np.array([]))
             continue
 
         meanshift_input=[]
@@ -449,6 +453,9 @@ def get_segments(roads, midpoints, midpoint_labels, plot=False, timer=True, writ
     # midpoint 和 labels 一一对应，一个中点有一个标签
     # 例如 midpoints[labels==1] 可以取出 midpoints 里所有第 1 类的点
     for i in range(len(midpoints)):
+        if not list(midpoint_labels[i]):
+            continue
+
         k=len(np.unique(midpoint_labels[i]))
         for j in range(k):
             segment_points=np.array(midpoints[i])[midpoint_labels[i]==j]
@@ -547,15 +554,15 @@ if __name__ == "__main__":
 
     buffer_distance=0.00004
 
-    num_of_cars=10000
+    num_of_cars=2000
 
     # 羊市街+西玉龙街
-    roads=df.loc[(df["obj_id"]==283504) | (df["obj_id"]==283505) | (df["obj_id"]==283506), "geometry"]
+    # roads=df.loc[(df["obj_id"]==283504) | (df["obj_id"]==283505) | (df["obj_id"]==283506), "geometry"]
 
-    # road_start_index=21
-    # road_end_index=None
+    road_start_index=21
+    road_end_index=23
 
-    # roads=df.loc[road_start_index:road_end_index, "geometry"]
+    roads=df.loc[road_start_index:road_end_index, "geometry"]
 
     segments, segment_centers=supersegment(roads, buffer_distance, num_of_cars, cluster_method=cluster_method, timer=True, plot=False, write_file=True)
 

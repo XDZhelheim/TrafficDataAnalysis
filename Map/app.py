@@ -15,7 +15,7 @@ def index():
 def show_supersegment():
     # ss.supersegment()
 
-    with open("D:\\Codes\\PythonWorkspace\\TrafficDataAnalysis\\supersegment_output\\supersegment_result.json", "r") as f:
+    with open("../supersegment_output/supersegment_result.json", "r") as f:
         response=json.load(f)
 
     return response
