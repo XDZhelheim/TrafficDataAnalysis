@@ -79,8 +79,8 @@ def kmeans(kmeans_input, k=None, metric=0, plot=False):
                 diff.append(SSE[i]-SSE[i+1])
 
             for i in range(len(diff)):
+                best_k=i+2
                 if diff[i]<=diff[0]/20:
-                    best_k=i+1
                     break
 
             if plot:
@@ -96,7 +96,7 @@ def kmeans(kmeans_input, k=None, metric=0, plot=False):
             for k in range(2, 9):
                 if len(kmeans_input)<k:
                     break
-                
+
                 estimator=KMeans(n_clusters=k)
                 estimator.fit(kmeans_input)
                 score=metrics.calinski_harabasz_score(kmeans_input, estimator.labels_)
