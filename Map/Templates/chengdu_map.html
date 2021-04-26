@@ -48,6 +48,7 @@
 
 <body>
     <button onclick="show_supersegment()">show supersegment</button>
+    <button onclick="get_matched_roads()">show matched roads</button>
     <!-- <a href="TTI.html"><input type="button" value='show TTI'></a>
     <a href="TTE.html"><input type="button" value='show TTE'></a> -->
     <label id="p1"></label>
@@ -72,9 +73,7 @@
         "StreetMap": tile
     };
 
-    let overLays = {
-        "Supersegment": null
-    };
+    let overLays = {};
 
     const chengdu_map = L.map(
         "chengdu_map",
@@ -87,6 +86,9 @@
             layers: [tile]
         }
     );
+
+    let ctrl = L.control.layers(baseLayers, null);
+    ctrl.addTo(chengdu_map);
 
     function newMarker(e) {
         if (a === 2) {
@@ -130,8 +132,8 @@
 
     chengdu_map.on('click', newMarker);
 
-    function show_supersegment(param) {
-        $.getJSON("/show_supersegment", {"param": param}).done(
+    function show_supersegment() {
+        $.getJSON("/show_supersegment").done(
             function(data) {
                 let supersegment_layer = L.geoJson(
                     data,
@@ -147,8 +149,39 @@
                 );
                 supersegment_layer.addTo(chengdu_map);
                 overLays.Supersegment = supersegment_layer;
-                L.control.layers(baseLayers, overLays).addTo(chengdu_map);
+
+                ctrl.remove();
+                ctrl = L.control.layers(baseLayers, overLays);
+                ctrl.addTo(chengdu_map);
             }
         )
     }
+
+    function get_matched_roads() {
+        let p1 = pointer1.getLatLng();
+        let p2 = pointer2.getLatLng();
+        $.getJSON("/road_match", {"lat1": p1.lat, "lng1": p1.lng, "lat2": p2.lat, "lng2": p2.lng}).done(
+            function(data) {
+                let matched_road_layer = L.geoJson(
+                    data,
+                    {
+                        style: function(feature) {
+                            return {
+                                color: 'red',
+                                // "weight": 3,
+                                // "opacity": 0.85
+                            };
+                        }
+                    }
+                );
+                matched_road_layer.addTo(chengdu_map);
+                overLays.MatchedRoads = matched_road_layer;
+
+                ctrl.remove();
+                ctrl = L.control.layers(baseLayers, overLays);
+                ctrl.addTo(chengdu_map);
+            }
+        )
+    }
+
 </script>

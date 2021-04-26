@@ -23,7 +23,15 @@ def show_supersegment():
 
 @app.route("/road_match", methods=["GET"])
 def road_match():
-    pass
+    p1=[float(flask.request.args.get("lat1")), float(flask.request.args.get("lng1"))]
+    p2=[float(flask.request.args.get("lat2")), float(flask.request.args.get("lng2"))]
+    app.logger.debug(p1)
+    app.logger.debug(p2)
+
+    with open("../supersegment_output/supersegment_result.json", "r") as f:
+        response=json.load(f)
+
+    return response
 
 def calculate_distance(roads):
     pass
