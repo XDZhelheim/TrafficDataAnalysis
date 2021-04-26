@@ -67,6 +67,9 @@ def kmeans(kmeans_input, k=None, metric=0, plot=False):
         if metric==0:
             SSE=[]  # 存放每次结果的误差平方和
             for k in range(1, 9):
+                if len(kmeans_input)<k:
+                    break
+
                 estimator=KMeans(n_clusters=k)
                 estimator.fit(kmeans_input)
                 SSE.append(estimator.inertia_)
@@ -91,6 +94,9 @@ def kmeans(kmeans_input, k=None, metric=0, plot=False):
         elif metric==1:
             best_k=0; best_score=-1
             for k in range(2, 9):
+                if len(kmeans_input)<k:
+                    break
+                
                 estimator=KMeans(n_clusters=k)
                 estimator.fit(kmeans_input)
                 score=metrics.calinski_harabasz_score(kmeans_input, estimator.labels_)
