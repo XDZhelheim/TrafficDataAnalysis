@@ -560,15 +560,15 @@ if __name__ == "__main__":
 
     buffer_distance=0.00004
 
-    num_of_cars=2000
+    num_of_cars=10000
 
     # 羊市街+西玉龙街
-    # roads=df.loc[(df["obj_id"]==283504) | (df["obj_id"]==283505) | (df["obj_id"]==283506), "geometry"]
+    roads=df.loc[(df["obj_id"]==283504) | (df["obj_id"]==283505) | (df["obj_id"]==283506), "geometry"]
 
-    road_start_index=21
-    road_end_index=23
+    # road_start_index=21
+    # road_end_index=23
 
-    roads=df.loc[road_start_index:road_end_index, "geometry"]
+    # roads=df.loc[road_start_index:road_end_index, "geometry"]
 
     segments, segment_centers=supersegment(roads, buffer_distance, num_of_cars, cluster_method=cluster_method, timer=True, plot=False, write_file=True)
 
