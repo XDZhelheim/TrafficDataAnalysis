@@ -142,7 +142,7 @@ def read_boundary():
     df=pd.read_table(work_path+"boundary.txt")
     df['geometry']=df['geometry'].apply(wkt.loads)
     df=gp.GeoDataFrame(df)
-    df.crs=CRS("epsg:3857")
+    # df.crs=CRS("epsg:2432")
 
     return df
 

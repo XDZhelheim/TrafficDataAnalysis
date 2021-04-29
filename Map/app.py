@@ -28,13 +28,15 @@ def road_match():
     app.logger.debug(p1)
     app.logger.debug(p2)
 
+    # TODO: road match
+
     with open("../supersegment_output/supersegment_result.json", "r") as f:
         response=json.load(f)
 
     return response
 
 def calculate_distance(roads):
-    pass
+    return roads.distance.sum()
 
 def calculate_TTI(roads):
     # return tti.calculate_TTI(roads, xxxxxx)

@@ -76,22 +76,25 @@ import supersegment
 #     temp=f.readline()
 # print(temp)
 
-df=pd.read_table("./TrafficDataAnalysis/boundary.txt", nrows=10000)
+df=pd.read_table("../boundary.txt", nrows=10000)
 df['geometry']=df['geometry'].apply(lambda z: wkt.loads(z))
 df=gp.GeoDataFrame(df)
 df.crs={'init':'epsg:4326'}
 
 roads=df.loc[(df["obj_id"]==283504) | (df["obj_id"]==283505) | (df["obj_id"]==283506), "geometry"].apply(lambda x: x.buffer(distance=0.0001))
-b=roads.iloc[0].bounds
-print(b)
+# b=roads.iloc[0].bounds
+# print(b)
 
 # minx, miny, maxx, maxy=roads.total_bounds
 # print(minx, miny, maxx, maxy)
 
-a=np.array([1, 2, 3, 4, 5, 6])
-b=np.array([0, 0, 1, 1, 2, 3])
-c=a[b==2]
+# a=np.array([1, 2, 3, 4, 5, 6])
+# b=np.array([0, 0, 1, 1, 2, 3])
+# c=a[b==2]
 
-print(c)
+# print(c)
 
-print(type(roads.iloc[0]))
+# print(type(roads.iloc[0]))
+
+roads=roads.to_crs("epsg:2432")
+print(roads.length)
