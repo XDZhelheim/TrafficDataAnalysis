@@ -14,7 +14,7 @@ from sklearn.cluster import KMeans, MeanShift
 from sklearn import metrics
 
 # work directory
-work_path="E:/didi/城市交通指数和轨迹数据_2018/data/"
+work_path="D:\\Codes\\PythonWorkspace\\TrafficDataAnalysis\\"
 
 colors=["#A1E2E6", "#E6BDA1", "#B3A16B", "#678072", "#524A4A"]
 
@@ -140,7 +140,7 @@ def kmeans(kmeans_input, k=None, metric=0, plot=False):
 
 def read_boundary():
     df=pd.read_table(work_path+"boundary.txt")
-    df['geom']=df['geom'].apply(wkt.loads)
+    df['geometry']=df['geometry'].apply(wkt.loads)
     df=gp.GeoDataFrame(df)
     # df.crs=CRS("epsg:2432")
 
@@ -563,7 +563,7 @@ if __name__ == "__main__":
     num_of_cars=10000
 
     # 羊市街+西玉龙街
-    roads=df.loc[(df["obj_id"]==283504) | (df["obj_id"]==283505) | (df["obj_id"]==283506), "geom"]
+    roads=df.loc[(df["obj_id"]==283504) | (df["obj_id"]==283505) | (df["obj_id"]==283506), "geometry"]
 
     # road_start_index=21
     # road_end_index=23
