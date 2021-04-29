@@ -98,3 +98,10 @@ roads=df.loc[(df["obj_id"]==283504) | (df["obj_id"]==283505) | (df["obj_id"]==28
 
 roads=roads.to_crs("epsg:2432")
 print(roads.length)
+
+# temp=[]
+# tracks=get_tracks(2000)
+# for i in tracks:
+#     for j in i:
+#         temp.append(Point(j[0], j[1]))
+# show_geom(gp.GeoSeries(temp), "black", "allpoints")

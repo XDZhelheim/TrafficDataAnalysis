@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import shapely.wkt as wkt
 from pyproj import CRS
-from shapely.geometry import MultiPoint, Point
+from shapely.geometry import MultiPoint, Point, box
 from sklearn.cluster import KMeans, MeanShift
 from sklearn import metrics
 
@@ -34,7 +34,13 @@ def show_district_and_road(df, district_line_number_start, district_line_number_
     ax.axis("off")
     fig.canvas.set_window_title(u'成都市')
 
-    df.loc[road_line_number_start:road_line_number_end].plot(ax=ax, color=colors[4], linewidth=0.2)
+    se=df.loc[road_line_number_start:road_line_number_end, "geometry"]
+
+    # (104.0421, 30.6526) (104.1287, 30.7271)
+    bound=gp.GeoSeries([box(104.0421, 30.6526, 104.1287, 30.7271)]) 
+    se=se.append(bound)
+
+    se.plot(ax=ax, color=colors[4], linewidth=0.2)
 
     plt.show()
 
@@ -61,6 +67,8 @@ def show_geom(obj, color, title, cmap=None, show=True, write_file=False):
 
 def kmeans(kmeans_input, k=None, metric=0, plot=False):
     # XXX: 选择 k 的算法
+
+    best_k=1
 
     if not k:
         # 利用SSE选择k, 手肘法 
@@ -563,12 +571,24 @@ if __name__ == "__main__":
     num_of_cars=10000
 
     # 羊市街+西玉龙街
-    roads=df.loc[(df["obj_id"]==283504) | (df["obj_id"]==283505) | (df["obj_id"]==283506), "geometry"]
+    # roads=df.loc[(df["obj_id"]==283504) | (df["obj_id"]==283505) | (df["obj_id"]==283506), "geometry"]
 
-    # road_start_index=21
-    # road_end_index=23
+    road_start_index=21
+    road_end_index=None
 
-    # roads=df.loc[road_start_index:road_end_index, "geometry"]
+    roads=df.loc[road_start_index:road_end_index, "geometry"]
+
+    # (104.0421, 30.6526) (104.1287, 30.7271)
+    print("Before drop: {} roads".format(len(roads)))
+
+    drop_index=[]
+    for i in roads.index:
+        minx, miny, maxx, maxy=roads[i].bounds
+        if maxx<104.0421 or maxy<30.6526 or minx>104.1287 or miny>30.7271:
+            drop_index.append(i)
+    roads=roads.drop(index=drop_index)
+    
+    print("After drop: {} roads".format(len(roads)))
 
     segments, segment_centers=supersegment(roads, buffer_distance, num_of_cars, cluster_method=cluster_method, timer=True, plot=False, write_file=True)
 
