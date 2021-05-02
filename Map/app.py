@@ -16,7 +16,7 @@ def index():
 def show_supersegment():
     # ss.supersegment()
 
-    with open("../supersegment_output/supersegment_result.json", "r") as f:
+    with open("../supersegment_output/supersegment_result_all.json", "r") as f:
         response=json.load(f)
 
     return response
@@ -30,7 +30,7 @@ def road_match():
 
     # TODO: road match
 
-    with open("../supersegment_output/supersegment_result.json", "r") as f:
+    with open("../supersegment_output/supersegment_result_all.json", "r") as f:
         response=json.load(f)
 
     return response
