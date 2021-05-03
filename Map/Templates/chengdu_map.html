@@ -48,9 +48,12 @@
 
 <body>
     <button onclick="show_supersegment()">show supersegment</button>
-    <button onclick="get_matched_roads()">show matched roads</button>
-    <!-- <a href="TTI.html"><input type="button" value='show TTI'></a>
-    <a href="TTE.html"><input type="button" value='show TTE'></a> -->
+    <!-- <button onclick="get_matched_roads()">show matched roads</button> -->
+    <select id="point1" name="point1"></select>
+    <button onclick="get_reachable_points()">query reachable points</button>
+    <select id="point2" name="point1"></select>
+    <button onclick="get_distance()">get distance</button>
+    <label id="dist"></label>
     <label id="p1"></label>
     <label id="p2"></label>
     <div class="folium-map" id="chengdu_map"></div>
@@ -157,6 +160,55 @@
         )
     }
 
+    function get_points() {
+        $.getJSON("./get_points").done(
+            function(data) {
+                // console.log(data)
+                let str = "";
+                for (let i = 0; i < 100; i++) {
+                    str = "<option value=\""+data[i]+"\">"+data[i]+"</option>";
+                    document.getElementById("point1").innerHTML+=str;
+                    // console.log(document.getElementById("point1").innerHTML);
+                }
+            }
+        )
+    }
+
+    window.onload(get_points());
+
+    function get_reachable_points() {
+        coord = $("#point1 option:selected").val();
+        // console.log(coord);
+
+        $.getJSON("./get_reachable_points", {"p1": coord}).done(
+            function(data) {
+                // console.log(data)
+                let str = "";
+                for (let i = 0; i < data.length; i++) {
+                    str = "<option value=\""+data[i]+"\">"+data[i]+"</option>";
+                    document.getElementById("point2").innerHTML+=str;
+                    // console.log(document.getElementById("point2").innerHTML);
+                }
+            }
+        )
+    }
+
+    let distance = null;
+
+    function get_distance() {
+        coord = $("#point2 option:selected").val();
+        // console.log(coord);
+
+        $.get("./get_distance", {"p2": coord}).done(
+            function(data) {
+                // console.log(data);
+                this.distance = data + "m";
+                document.getElementById("dist").innerHTML = this.distance;
+            }
+        )
+    }
+
+    // deprecated
     function get_matched_roads() {
         let p1 = pointer1.getLatLng();
         let p2 = pointer2.getLatLng();

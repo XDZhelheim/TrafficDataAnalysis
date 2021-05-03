@@ -17,3 +17,5 @@ __pycache__/
 *.prj
 
 supersegment_output/
+
+boundary_shapefile/
