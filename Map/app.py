@@ -35,19 +35,19 @@ def show_supersegment():
 
     return response
 
-@app.route("/road_match", methods=["GET"])
-def road_match():
-    p1=[float(flask.request.args.get("lat1")), float(flask.request.args.get("lng1"))]
-    p2=[float(flask.request.args.get("lat2")), float(flask.request.args.get("lng2"))]
-    app.logger.debug(p1)
-    app.logger.debug(p2)
+# @app.route("/road_match", methods=["GET"])
+# def road_match():
+#     p1=[float(flask.request.args.get("lat1")), float(flask.request.args.get("lng1"))]
+#     p2=[float(flask.request.args.get("lat2")), float(flask.request.args.get("lng2"))]
+#     app.logger.debug(p1)
+#     app.logger.debug(p2)
 
-    # TODO: road match
+#     # TODO: road match
 
-    with open("../supersegment_output/supersegment_result_all.json", "r") as f:
-        response=json.load(f)
+#     with open("../supersegment_output/supersegment_result_all.json", "r") as f:
+#         response=json.load(f)
 
-    return response
+#     return response
 
 def get_length(edge):
     geom=wkt.loads(edge["Wkt"])
@@ -65,7 +65,6 @@ def get_points():
 
     return json.dumps(response)
 
-# TODO: test
 @app.route("/get_reachable_points", methods=["GET"])
 def dijkstra_source_point():
     global source, length_dict, path_dict
@@ -81,9 +80,8 @@ def dijkstra_source_point():
     
     length_dict, path_dict=nx.single_source_dijkstra(graph, source, weight=lambda a, b, x: get_length(x))
 
-    return json.dumps(list(length_dict.keys()))
+    return json.dumps(list(length_dict.keys())[1:])
 
-# TODO: test
 @app.route("/get_distance", methods=["GET"])
 def get_distance():
     global target, length_dict, path_dict
@@ -96,11 +94,31 @@ def get_distance():
     p2=tuple(p2)
 
     target=p2
+    get_roads()
 
     return json.dumps(length_dict[target])#, path_dict[target]
 
-def get_path():
-    pass
+def get_roads():
+    global target
+    
+    path=path_dict[target]
+
+    roads=[]
+
+    for i in range(len(path)-1):
+        roads.append(wkt.loads(graph.get_edge_data(path[i], path[i+1])["Wkt"]))
+
+    roads=gp.GeoSeries(roads)
+    # app.logger.debug(roads)
+
+    return roads
+
+@app.route("/show_roads", methods=["GET"])
+def show_roads():
+    roads=get_roads()
+
+    return roads.to_json()
+
 
 def calculate_TTI(roads):
     # return tti.calculate_TTI(roads, xxxxxx)

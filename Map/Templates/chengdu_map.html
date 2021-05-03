@@ -52,7 +52,7 @@
     <select id="point1" name="point1"></select>
     <button onclick="get_reachable_points()">query reachable points</button>
     <select id="point2" name="point1"></select>
-    <button onclick="get_distance()">get distance</button>
+    <button onclick="get_distance(); show_roads()">get distance</button>
     <label id="dist"></label>
     <label id="p1"></label>
     <label id="p2"></label>
@@ -208,11 +208,8 @@
         )
     }
 
-    // deprecated
-    function get_matched_roads() {
-        let p1 = pointer1.getLatLng();
-        let p2 = pointer2.getLatLng();
-        $.getJSON("/road_match", {"lat1": p1.lat, "lng1": p1.lng, "lat2": p2.lat, "lng2": p2.lng}).done(
+    function show_roads() {
+        $.getJSON("./show_roads").done(
             function(data) {
                 let matched_road_layer = L.geoJson(
                     data,
@@ -235,5 +232,33 @@
             }
         )
     }
+
+    // // deprecated
+    // function get_matched_roads() {
+    //     let p1 = pointer1.getLatLng();
+    //     let p2 = pointer2.getLatLng();
+    //     $.getJSON("/road_match", {"lat1": p1.lat, "lng1": p1.lng, "lat2": p2.lat, "lng2": p2.lng}).done(
+    //         function(data) {
+    //             let matched_road_layer = L.geoJson(
+    //                 data,
+    //                 {
+    //                     style: function(feature) {
+    //                         return {
+    //                             color: 'red',
+    //                             // "weight": 3,
+    //                             // "opacity": 0.85
+    //                         };
+    //                     }
+    //                 }
+    //             );
+    //             matched_road_layer.addTo(chengdu_map);
+    //             overLays.MatchedRoads = matched_road_layer;
+
+    //             ctrl.remove();
+    //             ctrl = L.control.layers(baseLayers, overLays);
+    //             ctrl.addTo(chengdu_map);
+    //         }
+    //     )
+    // }
 
 </script>

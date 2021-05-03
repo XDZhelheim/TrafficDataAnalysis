@@ -60,6 +60,6 @@ if __name__ == "__main__":
 
     length_dict, path_dict=nx.single_source_dijkstra(graph, p1, weight=lambda a, b, x: get_length(x))
     print(path_dict)
-    print(length_dict)
+    # print(length_dict)
 
     # print(graph.nodes)
