@@ -5,7 +5,7 @@ import pickle
 if __name__ == "__main__":
     num_of_cars=200000
 
-    df=pd.read_csv("E:/didi/城市交通指数和轨迹数据_2018/data/chengdushi_1001_1010.csv", nrows=num_of_cars, header=0, names=["track"], usecols=[2],iterator=True)
+    df=pd.read_csv("D:\\Codes\\PythonWorkspace\\TrafficDataAnalysis\\chengdushi_1001_1010.csv", nrows=num_of_cars, header=0, names=["track"], usecols=[2],iterator=True)
     # df=pd.read_csv("./data/chengdushi_1001_1010.csv",iterator=True)
     cnt = 0
     for times in range(20):
@@ -21,7 +21,7 @@ if __name__ == "__main__":
                 item[1] = float(item[1])
                 item[2] = int(item[2])
             track.append(temp)
-        with open("E:/didi/城市交通指数和轨迹数据_2018/data/track_" + str(cnt) + "_cars", "wb") as f:
+        with open("D:\\Codes\\PythonWorkspace\\TrafficDataAnalysis\\track_" + str(cnt) + "_cars", "wb") as f:
             pickle.dump(track, f)
         cnt += sep_df.shape[0]
         print(times)

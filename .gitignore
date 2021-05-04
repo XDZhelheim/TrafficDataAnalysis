@@ -19,3 +19,5 @@ __pycache__/
 supersegment_output/
 
 boundary_shapefile/
+
+track_*_cars

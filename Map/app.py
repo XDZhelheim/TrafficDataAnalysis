@@ -103,7 +103,6 @@ def get_distance():
 
     return json.dumps(length_dict[target])#, path_dict[target]
 
-
 def get_roads():
     global target
     
@@ -119,37 +118,33 @@ def get_roads():
 
     return roads
 
-
 @app.route("/show_roads", methods=["GET"])
 def show_roads():
     roads=get_roads()
 
     return roads.to_json()
 
-
 def calculate_TTI():
     roads=get_roads()
     buffer_distance = 0.00004
     num_of_cars = 1000
     TTI_interval = 30
-    return tti.cal_TTI(roads, buffer_distance, num_of_cars, timer=True, plot=True, TTI_interval=TTI_interval)
-
+    return tti.cal_TTI(roads, buffer_distance, num_of_cars, timer=False, plot=False, TTI_interval=TTI_interval)
 
 @app.route("/TTE", methods=["GET"])
 def calculate_TTE():
     global length_dict
 
     distance = length_dict[target]
-    TTI,free_speed = calculate_TTI()
+    TTI, free_speed = calculate_TTI()
     query_time = time.localtime(time.time())
     query_minutes = query_time.tm_hour * 60 + query_time.tm_min
     tte_list = []
     for each_TTI in TTI:
-        speed = each_TTI[int(query_minutes/TTI_interval)]
+        speed = free_speed * each_TTI[int(query_minutes / TTI_interval)]
         tte = distance/speed
         tte_list.append(tte)
-    return tte_list
-
+    return sum(tte_list)
 
 if __name__ == "__main__":
     app.run(debug=True)

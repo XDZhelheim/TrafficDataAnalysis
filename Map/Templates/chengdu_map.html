@@ -64,6 +64,10 @@
 
     <label id="dist"></label>
 
+    <button onclick="getTTE()">get TTE</button>
+
+    <label id="tte"></label>
+
     <label id="p1"></label>
     <label id="p2"></label>
 
@@ -144,7 +148,7 @@
         document.getElementById('p' + new_mark._index_).innerText = "(" + lat + "," + lng + ")";
     }
 
-    chengdu_map.on('click', newMarker);
+    // chengdu_map.on('click', newMarker);
 
     function showSupersegment() {
         $.getJSON("/show_supersegment").done(
@@ -214,11 +218,22 @@
         coord = $("#point2 option:selected").val();
         // console.log(coord);
 
-        $.get("./get_distance", {"p2": coord}).done(
+        $.getJSON("./get_distance", {"p2": coord}).done(
             function(data) {
                 // console.log(data);
                 this.distance = data + "m";
                 document.getElementById("dist").innerHTML = this.distance;
+            }
+        )
+    }
+
+    let tte = null;
+
+    function getTTE() {
+        $.getJSON("./TTE").done(
+            function(data) {
+                this.tte = data + "s";
+                document.getElementById("tte").innerHTML = this.tte;
             }
         )
     }
