@@ -11,6 +11,7 @@ import geopandas as gp
 
 from pyproj import CRS
 from urllib.parse import unquote
+import time
 
 app=flask.Flask(__name__)
 
@@ -21,6 +22,10 @@ path_dict=None
 
 source=None
 target=None
+
+buffer_distance = 0.00004
+num_of_cars = 1000
+TTI_interval = 30
 
 @app.route("/")
 def index():
@@ -98,6 +103,7 @@ def get_distance():
 
     return json.dumps(length_dict[target])#, path_dict[target]
 
+
 def get_roads():
     global target
     
@@ -113,6 +119,7 @@ def get_roads():
 
     return roads
 
+
 @app.route("/show_roads", methods=["GET"])
 def show_roads():
     roads=get_roads()
@@ -122,20 +129,27 @@ def show_roads():
 
 def calculate_TTI():
     roads=get_roads()
-    # return tti.calculate_TTI(roads, xxxxxx)
-    pass
+    buffer_distance = 0.00004
+    num_of_cars = 1000
+    TTI_interval = 30
+    return tti.cal_TTI(roads, buffer_distance, num_of_cars, timer=True, plot=True, TTI_interval=TTI_interval)
+
 
 @app.route("/TTE", methods=["GET"])
-def calculate_TTE(roads):
+def calculate_TTE():
     global length_dict
 
-    distance=length_dict[target]
-    
-    # TTI=calculate_TTI(roads)
-    # speed=free_speed*TTI*xxxxxx
-    # tte=distance/speed
-    # return tte
-    pass
+    distance = length_dict[target]
+    TTI,free_speed = calculate_TTI()
+    query_time = time.localtime(time.time())
+    query_minutes = query_time.tm_hour * 60 + query_time.tm_min
+    tte_list = []
+    for each_TTI in TTI:
+        speed = each_TTI[int(query_minutes/TTI_interval)]
+        tte = distance/speed
+        tte_list.append(tte)
+    return tte_list
+
 
 if __name__ == "__main__":
     app.run(debug=True)

@@ -219,6 +219,7 @@ def show_TTIfig(avg_speed, TTI_interval, plot):
     """
     - 利用速度数据计算各时刻的TTI，将速度以及计算得到的TTI利用折线图的方式进行可视化
     """
+
     speed_map = [{} for i in range(len(avg_speed))]
     for i in range(int(1440 / TTI_interval)):
         for x_time in speed_map:
@@ -230,6 +231,7 @@ def show_TTIfig(avg_speed, TTI_interval, plot):
             minutes = format_time.tm_hour * 60 + format_time.tm_min
             speed_map[n][int(minutes / TTI_interval)].append(i[0])
     TTI = []
+    free_speed = 0
     for each_map in speed_map:
         lx = []
         ly_speed = []
@@ -278,7 +280,7 @@ def show_TTIfig(avg_speed, TTI_interval, plot):
             # plt.plot(lx, ly_tti, label='Frist line', linewidth=3, color='r', marker='o')  # 画折线图 （平均速度）
             # plt.plot(lx, y3, label='Frist line', linewidth=3, color='r', marker='o')  # 画折线图 （平均速度）
             plt.show()
-    return TTI
+    return TTI,free_speed
 
 
 def plt_figure(title, xlabel, ylabel, x_list, y_list,x_lim,y_lim):
@@ -353,12 +355,12 @@ def cal_TTI(roads, buffer_distance, num_of_cars, plot, timer, TTI_interval):
     if plot:
         show_speed(avg_speeeds)
     # 3. 按照时间将这些点分类，得到每个时间段的平均速度
-    TTI = show_TTIfig(avg_speeeds, TTI_interval, plot)
+    TTI,free_speed = show_TTIfig(avg_speeeds, TTI_interval, plot)
     end = time.time()
     if timer:
         print("总共用时为：",str(end-start))
 
-    return TTI
+    return TTI,free_speed
 
 
 if __name__ == "__main__":
@@ -366,7 +368,7 @@ if __name__ == "__main__":
 
     buffer_distance = 0.00004
 
-    num_of_cars = 10000
+    num_of_cars = 1000
 
     TTI_interval = 30
 
@@ -376,6 +378,10 @@ if __name__ == "__main__":
     # roads = df.loc[(df["obj_id"] == 283504) | (df["obj_id"] == 283505) | (df["obj_id"] == 283506), "geom"]
     # roads = df.loc[(df["obj_id"] == 283505) | (df["obj_id"] == 283506), "geom"]
 
-    TTI = cal_TTI(roads, buffer_distance, num_of_cars, timer=True, plot=True, TTI_interval=TTI_interval)
+    TTI,free_speed = cal_TTI(roads, buffer_distance, num_of_cars, timer=False, plot=False, TTI_interval=TTI_interval)
+    tmp_time = time.localtime(time.time())
+    tmp_min = tmp_time.tm_hour * 60 + tmp_time.tm_min
+    a = tmp_min / ( TTI_interval)
+    speed = TTI[0][(int)(a)]
 
     print(TTI)  # 返回结果是一个数组，为 [ans1,ans2,...]的形式，每个ans为输入道路对应的 TTI值 该TTI值，以[时间，TTI]的方式记录
