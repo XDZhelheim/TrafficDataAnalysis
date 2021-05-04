@@ -127,7 +127,7 @@ def show_roads():
 def calculate_TTI():
     roads=get_roads()
     buffer_distance = 0.00004
-    num_of_cars = 1000
+    num_of_cars = 20000
     TTI_interval = 30
     return tti.cal_TTI(roads, buffer_distance, num_of_cars, timer=False, plot=False, TTI_interval=TTI_interval)
 
@@ -141,10 +141,13 @@ def calculate_TTE():
     query_minutes = query_time.tm_hour * 60 + query_time.tm_min
     tte_list = []
     for each_TTI in TTI:
-        speed = free_speed * each_TTI[int(query_minutes / TTI_interval)]
+        speed = free_speed / each_TTI[1][int(query_minutes/TTI_interval)]
         tte = distance/speed
         tte_list.append(tte)
-    return sum(tte_list)
+
+    app.logger.debug(tte_list)
+
+    return json.dumps(str(sum(tte_list)))
 
 if __name__ == "__main__":
     app.run(debug=True)
