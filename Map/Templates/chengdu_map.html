@@ -26,6 +26,7 @@
     </style>
 
     <script src="https://cdn.jsdelivr.net/npm/leaflet@1.6.0/dist/leaflet.js"></script>
+    <!-- <script src="https://cdn.bootcdn.net/ajax/libs/leaflet/1.7.1/leaflet.js"></script> -->
     <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.js"></script>
@@ -47,15 +48,25 @@
 </head>
 
 <body>
-    <button onclick="show_supersegment()">show supersegment</button>
+    <button onclick="showSupersegment()">show supersegment</button>
+
     <!-- <button onclick="get_matched_roads()">show matched roads</button> -->
-    <select id="point1" name="point1"></select>
-    <button onclick="get_reachable_points()">query reachable points</button>
-    <select id="point2" name="point1"></select>
-    <button onclick="get_distance(); show_roads()">get distance</button>
+
+    <select id="point1" onchange="showStartMarker()">
+        <option selected="selected" disabled="disabled"  style="display: none" value=""></option>
+    </select>
+
+    <button onclick="getReachablePoints()">query reachable points</button>
+
+    <select id="point2" onchange="showEndMarker()"></select>
+
+    <button onclick="getDistance(); showRoads()">get distance</button>
+
     <label id="dist"></label>
+
     <label id="p1"></label>
     <label id="p2"></label>
+
     <div class="folium-map" id="chengdu_map"></div>
 </body>
 
@@ -83,7 +94,7 @@
         {
             center: [30.6669, 104.0655],
             crs: L.CRS.EPSG3857,
-            zoom: 17,
+            zoom: 12,
             zoomControl: true,
             preferCanvas: false,
             layers: [tile]
@@ -135,7 +146,7 @@
 
     chengdu_map.on('click', newMarker);
 
-    function show_supersegment() {
+    function showSupersegment() {
         $.getJSON("/show_supersegment").done(
             function(data) {
                 let supersegment_layer = L.geoJson(
@@ -160,42 +171,46 @@
         )
     }
 
-    function get_points() {
+    function getPoints() {
         $.getJSON("./get_points").done(
             function(data) {
                 // console.log(data)
                 let str = "";
-                for (let i = 0; i < 100; i++) {
-                    str = "<option value=\""+data[i]+"\">"+data[i]+"</option>";
-                    document.getElementById("point1").innerHTML+=str;
+                for (let i = 0; i < 500; i++) {
+                    str = "<option value=\""+data[i]+"\">" + data[i] +" </option>";
+                    document.getElementById("point1").innerHTML += str;
                     // console.log(document.getElementById("point1").innerHTML);
                 }
             }
         )
     }
 
-    window.onload(get_points());
+    window.onload(getPoints());
 
-    function get_reachable_points() {
+    const selected = "<option selected=\"selected\" disabled=\"disabled\"  style=\"display: none\" value=\"\"></option>";
+
+    function getReachablePoints() {
         coord = $("#point1 option:selected").val();
         // console.log(coord);
 
         $.getJSON("./get_reachable_points", {"p1": coord}).done(
             function(data) {
                 // console.log(data)
+                document.getElementById("point2").innerHTML = null;
                 let str = "";
                 for (let i = 0; i < data.length; i++) {
-                    str = "<option value=\""+data[i]+"\">"+data[i]+"</option>";
-                    document.getElementById("point2").innerHTML+=str;
+                    str = "<option value=\"" + data[i]+"\">" + data[i] + "</option>";
+                    document.getElementById("point2").innerHTML += str;
                     // console.log(document.getElementById("point2").innerHTML);
                 }
+                showEndMarker();
             }
         )
     }
 
     let distance = null;
 
-    function get_distance() {
+    function getDistance() {
         coord = $("#point2 option:selected").val();
         // console.log(coord);
 
@@ -208,7 +223,10 @@
         )
     }
 
-    function show_roads() {
+    function showRoads() {
+        if (overLays.Path)
+            chengdu_map.removeLayer(overLays.Path);
+
         $.getJSON("./show_roads").done(
             function(data) {
                 let matched_road_layer = L.geoJson(
@@ -224,13 +242,49 @@
                     }
                 );
                 matched_road_layer.addTo(chengdu_map);
-                overLays.MatchedRoads = matched_road_layer;
+                overLays.Path = matched_road_layer;
 
                 ctrl.remove();
                 ctrl = L.control.layers(baseLayers, overLays);
                 ctrl.addTo(chengdu_map);
             }
         )
+    }
+
+    let goldIcon = new L.Icon({
+        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-gold.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+    });
+
+    let startMarker = null;
+    let endMarker = null;
+
+    function showStartMarker() {
+        coord = $("#point1 option:selected").val();
+        coord = coord.split(",");
+        let lng = Number(coord[0]);
+        let lat = Number(coord[1]);
+
+        if (this.startMarker == null)
+            this.startMarker = L.marker([lat, lng]).addTo(chengdu_map);
+        else
+            this.startMarker.setLatLng([lat, lng]);
+    }
+
+    function showEndMarker() {
+        coord = $("#point2 option:selected").val();
+        coord = coord.split(",");
+        let lng = Number(coord[0]);
+        let lat = Number(coord[1]);
+
+        if (this.endMarker == null)
+            this.endMarker = L.marker([lat, lng]).addTo(chengdu_map);
+        else
+            this.endMarker.setLatLng([lat, lng]);
     }
 
     // // deprecated

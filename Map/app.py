@@ -120,13 +120,17 @@ def show_roads():
     return roads.to_json()
 
 
-def calculate_TTI(roads):
+def calculate_TTI():
+    roads=get_roads()
     # return tti.calculate_TTI(roads, xxxxxx)
     pass
 
 @app.route("/TTE", methods=["GET"])
 def calculate_TTE(roads):
-    # distance=calculate_distance(roads)
+    global length_dict
+
+    distance=length_dict[target]
+    
     # TTI=calculate_TTI(roads)
     # speed=free_speed*TTI*xxxxxx
     # tte=distance/speed
