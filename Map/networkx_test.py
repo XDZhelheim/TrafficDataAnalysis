@@ -47,6 +47,10 @@ def get_length(edge):
 if __name__ == "__main__":
     graph=nx.read_shp("./boundary_shapefile/boundary.shp")
 
+    nx.draw(graph)
+    plt.savefig("./graph.png")
+    exit(0)
+
     p1=(104.08143, 30.69705)
     # p2=(104.08145, 30.69757)
     p2=(104.03855, 30.71273)

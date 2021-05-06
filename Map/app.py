@@ -43,7 +43,7 @@ def show_supersegment():
     with open("../supersegment_output/supersegment_result_all.json", "r") as f:
         response=json.load(f)
 
-    return response
+    return json.dumps(response)
 
 # @app.route("/road_match", methods=["GET"])
 # def road_match():
@@ -104,7 +104,6 @@ def get_distance():
     p2=tuple(p2)
 
     target=p2
-    get_roads()
 
     return json.dumps(length_dict[target])#, path_dict[target]
 
@@ -165,7 +164,7 @@ def calculate_TTI():
 def calculate_TTE():
     global length_dict
     distance = length_dict[target]
-    TTI, free_speed_list,road_avg_speed = calculate_TTI()
+    TTI, free_speed_list, road_avg_speed = calculate_TTI()
     query_time = time.localtime(time.time())
     query_minutes = query_time.tm_hour * 60 + query_time.tm_min
 

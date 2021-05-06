@@ -20,6 +20,9 @@ warnings.filterwarnings('ignore')
 
 colors = ["#A1E2E6", "#E6BDA1", "#B3A16B", "#678072", "#524A4A"]
 
+# path = "E:\\didi\\城市交通指数和轨迹数据_2018\\data\\"
+path = "D:\\Codes\\PythonWorkspace\\TrafficDataAnalysis\\"
+
 
 def show_geom(df, color, title):
     """
@@ -331,7 +334,7 @@ def cal_TTI(roads, buffer_distance, num_of_cars, plot, timer, TTI_interval):
     read1 = time.time()
     tracks = []
     for i in range(int(num_of_cars / 10000 + 1)):
-        with open('E:\\didi\\城市交通指数和轨迹数据_2018\\data\\track_' + str(i * 10000) + '_cars', "rb") as f:
+        with open(path+'track_' + str(i * 10000) + '_cars', "rb") as f:
             tmp_read = pickle.load(f)
             tracks.extend(tmp_read)
     tracks = tracks[:num_of_cars]

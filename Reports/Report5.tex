@@ -155,15 +155,88 @@ In last stage, we finished the code of \textit{Supersegment} and made a simple U
 Breifly, we will state our work in this report as
 \begin{itemize}
   \item TTE Web APP Design by 董正 \& 王宇辰
-  \item Computing TTI by 崔俞崧
+  \item Result Analysis on \textit{TTI} and \textit{Supersegment} by 崔俞崧
 \end{itemize}
 
-\clearpage
 \section{TTE Web APP Design}
+\subsection{Introduction}
+Our application is a front-back web system.
 
+Front end:
+\begin{itemize}
+  \item \textit{Leaflet}: A JavaScript map library
+  \item \textit{高德地图}: Provider of the base map
+  \item \textit{jQuery}: A JavaScript communicator
+\end{itemize}
+
+Back end:
+\begin{itemize}
+  \item \textit{Flask}: A \textit{Python} back-end framework
+  \item \textit{NetworkX}: A \textit{Python} library for graph analysis
+  \item \textit{GeoJSON}: A special format of JSON that represents geo data
+\end{itemize}
+
+\subsection{Implementation}
+\begin{enumerate}
+  \item Convert orginal road data to \textit{shapefile} format
+  \item Build geo-graph with \textit{NetworkX}
+  \item Select start and end points in web front, use \textit{jQuery} to send request to back-end server
+  \item Run \textit{Dijkstra} alogrithm in the graph to find shortest path and distance
+  \item Send \textit{GeoJSON} data to front-end and show the calculated path
+  \item Calculate TTI, and use it to work out the estimated time of arrival
+  \item Send the final result to front-end
+\end{enumerate}
+
+\begin{figure}[htb]
+  \centering
+  \includegraphics[width=\textwidth]{images/app_example.png}
+  \caption{Web Application}
+  \label{app}
+\end{figure}
+
+\section{Result Analysis on TTI and Supersegment}
+\subsection{Purpose of Result Analysis}
+The main purpose of error analysis is to analyze the current results, compare them with the actual values, find out the shortcomings of the current algorithm and improve these algorithms. First of all, the two algorithms are still relatively rough, while the current evaluation methods are still not clear. By calculating the error of travel time prediction, we can find out whether the accuracy can be improved after improving the algorithms. Secondly, by comparing the two algorithms with the average speed of difference roads, we can know whether the two algorithms could improve the time prediction, and whether they could be a means of data preprocessing for neural network.
 
 \clearpage
-\section{Computing TTI}
+\subsection{Results of Current Error Analysis}
+\begin{figure}[htb]
+  \centering
+  \includegraphics[width=\textwidth]{images/error1.png}
+  \caption{Prediction using road's average speed}
+  \label{error1}
+\end{figure}
+
+\begin{figure}[htb]
+  \centering
+  \includegraphics[width=\textwidth]{images/error2.png}
+  \caption{Prediction using road's TTI}
+  \label{error2}
+\end{figure}
+
+\begin{figure}[htb]
+  \centering
+  \includegraphics[width=\textwidth]{images/error3.png}
+  \caption{Prediction using Supersegment}
+  \label{error3}
+\end{figure}
+
+\clearpage
+\subsection{Interpretation of Results}
+As can be seen from the results of 3.2, both algorithms improves the accuracy of time prediction. The improvement of TTI is more pronounced than SuperSegment. Analytical reasons is that the current forecast is based on the road rather than the trajectory. And vehicles are more likely travel the entire road, in which case using supersegment or not will not make a big difference in results. However, TTI is closely related to travel time, and there are obvious differences in TTI at different time.
+
+It can also be seen from the results that there are still errors in the prediction results, which are related to the processing process of the algorithm and the particularity of the trajectory
+
+In addition, the amount of data used in the current calculation is still too small, which also has some reasons for the error. Too little data can lead to too many generalizations, making it harder to deal with extreme cases. More data will improve the accuracy of the results.
+
+Finally, in order to ensure the efficiency of the algorithm, there will be some errors in the calculation process, and these errors will eventually be reflected in the error of time prediction.
+
+\subsection{Ascending Direction}
+\begin{enumerate}
+  \item Increase the amount of data and improve the efficiency of the algorithm, so that more data can be used to build the model and the algorithm can better deal with special cases.
+  \item Improve TTI and Supersegment algorithms to increase the accuracy of the models. At present, the algorithms still has some approximate cases, in addition, the treatment of special cases is not perfect. How to improve the algorithm and make the model more accurate is one way to improve the prediction accuracy.
+  \item TTI and Supersegment could be considered as parameter preprocessing means for time series analysis and neural network. At present, parameter input of Deep learning models such as DeepTTE is only simple road section and trajectory data. If it is pretreated to a certain extent, the accuracy of prediction may be improved.
+\end{enumerate}
 
 % \clearpage
 % \phantomsection
