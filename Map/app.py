@@ -1,7 +1,10 @@
+import math
 import sys
+
 sys.path.append("../")
 
 import Supersegment.supersegment as ss
+import numpy as np
 import TTI_computing.TTI_calculation as tti
 import flask
 import json
@@ -12,6 +15,8 @@ import geopandas as gp
 from pyproj import CRS
 from urllib.parse import unquote
 import time
+from shapely.geometry import MultiPoint, Point
+
 
 app=flask.Flask(__name__)
 
@@ -25,7 +30,7 @@ target=None
 
 buffer_distance = 0.00004
 num_of_cars = 1000
-TTI_interval = 30
+TTI_interval = 120
 
 @app.route("/")
 def index():
@@ -125,28 +130,53 @@ def show_roads():
     return roads.to_json()
 
 def calculate_TTI():
-    roads=get_roads()
-    buffer_distance = 0.00004
-    num_of_cars = 150000
-    TTI_interval = 30
+    df = ss.read_boundary()
+    # road_start_index = 21
+    # road_end_index = None
+    # roads = df.loc[road_start_index:road_end_index, "geom"]
+    #
+    # # (104.0421, 30.6526) (104.1287, 30.7271)
+    # drop_index = []
+    # for i in roads.index:
+    #     minx, miny, maxx, maxy = roads[i].bounds
+    #     if maxx < 104.0421 or maxy < 30.6526 or minx > 104.1287 or miny > 30.7271:
+    #         drop_index.append(i)
+    # roads = roads.drop(index=drop_index)
+    #
+    # tmp_road=get_roads()
+    # to_calcul_road = []
+    # for each_tmp in tmp_road:
+    #     minx, miny, maxx, maxy = each_tmp.bounds
+    #     p = Point(minx,miny)
+    #     for j in range(len(roads)):
+    #         road = roads.iloc[j]
+    #         if road.contains(p):
+    #             to_calcul_road.append(road)
+    #             break
+
+    # 首先要计算这个路段到底对应的是哪个真实路段（更长的）
+    roads = get_roads()
+    # buffer_distance = 0.00004
+    # num_of_cars = 20000
+    # TTI_interval = 120
     return tti.cal_TTI(roads, buffer_distance, num_of_cars, timer=False, plot=False, TTI_interval=TTI_interval)
 
 @app.route("/TTE", methods=["GET"])
 def calculate_TTE():
     global length_dict
-
     distance = length_dict[target]
-    TTI, free_speed_list = calculate_TTI()
+    TTI, free_speed_list,road_avg_speed = calculate_TTI()
     query_time = time.localtime(time.time())
     query_minutes = query_time.tm_hour * 60 + query_time.tm_min
+
     tte_list = []
     for i,each_TTI in enumerate(TTI):
         speed = free_speed_list[i] / each_TTI[1][int(query_minutes/TTI_interval)]
+        if math.isnan(speed):
+            speed = tti.get_TTIspeed()
         tte = distance/speed
         tte_list.append(tte)
-
     app.logger.debug(tte_list)
-
     return json.dumps(str(sum(tte_list)))
 
 if __name__ == "__main__":
