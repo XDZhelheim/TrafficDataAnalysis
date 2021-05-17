@@ -367,9 +367,24 @@ if __name__ == "__main__":
     num_of_cars = 2000
     TTI_interval = 30
     # 羊市街+西玉龙街
-    roads = df.loc[(df["obj_id"] == 283506), "geom"]
+    # roads = df.loc[(df["obj_id"] == 283506), "geom"]
     # roads = df.loc[(df["obj_id"] == 283505) | (df["obj_id"] == 283506) | (df["obj_id"] == 283524), "geom"]
-
     # roads = df.loc[(df["obj_id"] == 283505) | (df["obj_id"] == 283506), "geom"]
+    road_start_index = 21
+    road_end_index = None
+
+    roads = df.loc[road_start_index:road_end_index, "geometry"]
+
+    # (104.0421, 30.6526) (104.1287, 30.7271)
+    print("Before drop: {} roads".format(len(roads)))
+
+    drop_index = []
+    for i in roads.index:
+        minx, miny, maxx, maxy = roads[i].bounds
+        if maxx < 104.0421 or maxy < 30.6526 or minx > 104.1287 or miny > 30.7271:
+            drop_index.append(i)
+    roads = roads.drop(index=drop_index)
+
+    print("After drop: {} roads".format(len(roads)))
 
     TTI, free_speed,road_avg_speed = cal_TTI(roads, buffer_distance, num_of_cars, plot=False, timer=False, TTI_interval=TTI_interval)
