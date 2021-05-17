@@ -1,5 +1,6 @@
 import math
 import sys
+from typing import NoReturn
 
 sys.path.append("../")
 
@@ -18,15 +19,19 @@ import time
 from shapely.geometry import MultiPoint, Point
 
 
+MAX_INT=999
+
 app=flask.Flask(__name__)
 
 graph=nx.read_shp("./boundary_shapefile/boundary.shp")
 
-length_dict=None
-path_dict=None
+# length_dict=None
+# path_dict=None
 
-source=None
-target=None
+# source=None
+# target=None
+
+roads=None
 
 buffer_distance = 0.00004
 num_of_cars = 1000
@@ -38,26 +43,10 @@ def index():
 
 @app.route("/show_supersegment", methods=["GET"])
 def show_supersegment():
-    # ss.supersegment()
-
     with open("../supersegment_output/supersegment_result_all.json", "r") as f:
         response=json.load(f)
 
     return json.dumps(response)
-
-# @app.route("/road_match", methods=["GET"])
-# def road_match():
-#     p1=[float(flask.request.args.get("lat1")), float(flask.request.args.get("lng1"))]
-#     p2=[float(flask.request.args.get("lat2")), float(flask.request.args.get("lng2"))]
-#     app.logger.debug(p1)
-#     app.logger.debug(p2)
-
-#     # TODO: road match
-
-#     with open("../supersegment_output/supersegment_result_all.json", "r") as f:
-#         response=json.load(f)
-
-#     return response
 
 def get_length(edge):
     geom=wkt.loads(edge["Wkt"])
@@ -68,67 +57,81 @@ def get_length(edge):
 
     return roads.length[0]
 
-@app.route("/get_points", methods=["GET"])
-def get_points():
-    with open("./boundary_shapefile/nodes.json", "r") as f:
-        response=json.load(f)
+def get_manhattan_distance(p1, p2):
+    return abs(p1[0] - p2[0]) + abs(p1[1] - p2[1])
 
-    return json.dumps(response)
+def get_matched_points(p1, p2):
+    source=(MAX_INT, MAX_INT)
+    target=(MAX_INT, MAX_INT)
+    for point in graph:
+        if get_manhattan_distance(point, p1)<get_manhattan_distance(source, p1):
+            source=point
+        if get_manhattan_distance(point, p2)<get_manhattan_distance(target, p2):
+            target=point
 
-@app.route("/get_reachable_points", methods=["GET"])
-def dijkstra_source_point():
-    global source, length_dict, path_dict
+    return source, target
 
-    p1=flask.request.args.get("p1")
-    p1=unquote(p1)
-    p1=p1.split(",")
-    p1[0]=float(p1[0])
-    p1[1]=float(p1[1])
-    p1=tuple(p1)
+# @app.route("/get_points", methods=["GET"])
+# def get_points():
+#     with open("./boundary_shapefile/nodes.json", "r") as f:
+#         response=json.load(f)
 
-    source=p1
+#     return json.dumps(response)
+
+# @app.route("/get_reachable_points", methods=["GET"])
+# def dijkstra_source_point():
+#     global source, length_dict, path_dict
+
+#     p1=flask.request.args.get("p1")
+#     p1=unquote(p1)
+#     p1=p1.split(",")
+#     p1[0]=float(p1[0])
+#     p1[1]=float(p1[1])
+#     p1=tuple(p1)
+
+#     source=p1
     
-    length_dict, path_dict=nx.single_source_dijkstra(graph, source, weight=lambda a, b, x: get_length(x))
+#     length_dict, path_dict=nx.single_source_dijkstra(graph, source, weight=lambda a, b, x: get_length(x))
 
-    return json.dumps(list(length_dict.keys())[1:])
+#     return json.dumps(list(length_dict.keys())[1:])
 
-@app.route("/get_distance", methods=["GET"])
-def get_distance():
-    global target, length_dict, path_dict
+# @app.route("/get_distance", methods=["GET"])
+# def get_distance():
+#     global target, length_dict, path_dict
 
-    p2=flask.request.args.get("p2")
-    p2=unquote(p2)
-    p2=p2.split(",")
-    p2[0]=float(p2[0])
-    p2[1]=float(p2[1])
-    p2=tuple(p2)
+#     p2=flask.request.args.get("p2")
+#     p2=unquote(p2)
+#     p2=p2.split(",")
+#     p2[0]=float(p2[0])
+#     p2[1]=float(p2[1])
+#     p2=tuple(p2)
 
-    target=p2
+#     target=p2
 
-    return json.dumps(length_dict[target])#, path_dict[target]
+#     return json.dumps(length_dict[target])#, path_dict[target]
 
-def get_roads():
-    global target
+# def get_roads():
+#     global target
     
-    path=path_dict[target]
+#     path=path_dict[target]
 
-    roads=[]
+#     roads=[]
 
-    for i in range(len(path)-1):
-        roads.append(wkt.loads(graph.get_edge_data(path[i], path[i+1])["Wkt"]))
+#     for i in range(len(path)-1):
+#         roads.append(wkt.loads(graph.get_edge_data(path[i], path[i+1])["Wkt"]))
 
-    roads=gp.GeoSeries(roads)
-    # app.logger.debug(roads)
+#     roads=gp.GeoSeries(roads)
+#     # app.logger.debug(roads)
 
-    return roads
+#     return roads
 
 @app.route("/show_roads", methods=["GET"])
 def show_roads():
-    roads=get_roads()
-
+    global roads
     return roads.to_json()
 
 def calculate_TTI():
+    global roads
     df = ss.read_boundary()
     # road_start_index = 21
     # road_end_index = None
@@ -154,20 +157,17 @@ def calculate_TTI():
     #             break
 
     # 首先要计算这个路段到底对应的是哪个真实路段（更长的）
-    roads = get_roads()
+    # roads = get_roads()
     # buffer_distance = 0.00004
     # num_of_cars = 20000
     # TTI_interval = 120
     return tti.cal_TTI(roads, buffer_distance, num_of_cars, timer=False, plot=False, TTI_interval=TTI_interval)
 
-@app.route("/TTE", methods=["GET"])
-def calculate_TTE():
-    global length_dict
-    distance = length_dict[target]
-    TTI, free_speed_list, road_avg_speed = calculate_TTI()
+def calculate_TTE(distance):
+    TTI, free_speed_list, _ = calculate_TTI()
     query_time = time.localtime(time.time())
     query_minutes = query_time.tm_hour * 60 + query_time.tm_min
-
+    
     tte_list = []
     for i,each_TTI in enumerate(TTI):
         speed = free_speed_list[i] / each_TTI[1][int(query_minutes/TTI_interval)]
@@ -176,7 +176,31 @@ def calculate_TTE():
         tte = distance/speed
         tte_list.append(tte)
     app.logger.debug(tte_list)
-    return json.dumps(str(sum(tte_list)))
+    return sum(tte_list)
+
+@app.route("/TTE_result", methods=["GET"])
+def get_result():
+    p1=(float(flask.request.args.get("lng1")), float(flask.request.args.get("lat1")))
+    p2=(float(flask.request.args.get("lng2")), float(flask.request.args.get("lat2")))
+
+    source, target=get_matched_points(p1, p2)
+
+    distance, path=nx.single_source_dijkstra(graph, source, target, weight=lambda a, b, x: get_length(x))
+
+    app.logger.debug(distance)
+    app.logger.debug(path)
+
+    global roads
+    roads=[]
+    for i in range(len(path)-1):
+        roads.append(wkt.loads(graph.get_edge_data(path[i], path[i+1])["Wkt"]))
+    roads=gp.GeoSeries(roads)
+
+    tte=calculate_TTE(distance)
+
+    return json.dumps([tte, distance])
 
 if __name__ == "__main__":
     app.run(debug=True)
+
+# osmnx

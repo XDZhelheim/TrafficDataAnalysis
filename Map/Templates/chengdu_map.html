@@ -30,6 +30,8 @@
     <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/0.4.9/leaflet.draw.js"></script>
+    <!-- <script src="https://unpkg.com/element-ui/lib/index.js"></script> -->
 
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.6.0/dist/leaflet.css" />
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css" />
@@ -39,6 +41,8 @@
         href="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.css" />
     <link rel="stylesheet"
         href="https://cdn.jsdelivr.net/gh/python-visualization/folium/folium/templates/leaflet.awesome.rotate.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/0.4.9/leaflet.draw.css" />
+    <!-- <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css"> -->
 
     <meta name="viewport" content="width=device-width,
                 initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
@@ -48,11 +52,11 @@
 </head>
 
 <body>
-    <button onclick="showSupersegment()">show supersegment</button>
+    <!-- <button onclick="showSupersegment()">show supersegment</button> -->
 
     <!-- <button onclick="get_matched_roads()">show matched roads</button> -->
 
-    <select id="point1" onchange="showStartMarker()">
+    <!-- <select id="point1" onchange="showStartMarker()">
         <option selected="selected" disabled="disabled"  style="display: none" value=""></option>
     </select>
 
@@ -60,16 +64,16 @@
 
     <select id="point2" onchange="showEndMarker()"></select>
 
-    <button onclick="getDistance(); showRoads()">get distance</button>
+    <button onclick="getDistance(); showRoads()">get distance</button> -->
 
-    <label id="dist"></label>
+    <!-- <label id="dist"></label> -->
 
-    <button onclick="getTTE()">get TTE</button>
+    <!-- <button onclick="getTTE()">get TTE</button> -->
 
-    <label id="tte"></label>
+    <!-- <label id="tte"></label> -->
 
-    <label id="p1"></label>
-    <label id="p2"></label>
+    <!-- <label id="p1"></label>
+    <label id="p2"></label> -->
 
     <div class="folium-map" id="chengdu_map"></div>
 </body>
@@ -108,6 +112,48 @@
     let ctrl = L.control.layers(baseLayers, null);
     ctrl.addTo(chengdu_map);
 
+    L.Control.showSupersegment = L.Control.extend({
+        options: {
+            position: 'topleft',
+        },
+
+        onAdd: function(map) {
+            let controlDiv = L.DomUtil.create('div', 'leaflet-control leaflet-bar leaflet-draw-toolbar');
+            let icon = L.DomUtil.create('a', "leaflet-draw-draw-polyline", controlDiv);
+            icon.title = 'Show Supersegment';
+
+            L.DomEvent.on(icon, "click", function(ev) {
+                L.DomEvent.stopPropagation(ev);
+                showSupersegment();
+            });
+            return controlDiv;
+        }
+    });
+    showSupersegmentControl = new L.Control.showSupersegment();
+    showSupersegmentControl.addTo(chengdu_map);
+
+    L.Control.showResult = L.Control.extend({
+        options: {
+            position: 'topleft',
+        },
+
+        onAdd: function(map) {
+            let controlDiv = L.DomUtil.create('div', 'leaflet-control leaflet-bar leaflet-draw-toolbar');
+            let icon = L.DomUtil.create('a', "leaflet-draw-draw-marker", controlDiv);
+            icon.title = 'Get TTE';
+
+            L.DomEvent.on(icon, "click", function(ev) {
+                L.DomEvent.stopPropagation(ev);
+                showResult();
+            });
+            return controlDiv;
+        }
+    });
+    showResultControl = new L.Control.showResult();
+    showResultControl.addTo(chengdu_map);
+
+// ----------------------------------------------------------------------------------------------------------------------
+
     function newMarker(e) {
         if (a === 2) {
             return;
@@ -115,27 +161,27 @@
         a++;
         const new_mark = L.marker().setLatLng(e.latlng).addTo(chengdu_map);
         new_mark.dragging.enable();
-        if (pointer1 == null) {
+        if (window.pointer1 == null) {
             new_mark._index_ = 1;
-            pointer1 = new_mark;
+            window.pointer1 = new_mark;
         } else {
             new_mark._index_ = 2;
-            pointer2 = new_mark;
+            window.pointer2 = new_mark;
         }
         new_mark.on('dblclick', function (e) {
             chengdu_map.removeLayer(e.target)
-            document.getElementById('p' + new_mark._index_).innerText = "";
+            // document.getElementById('p' + new_mark._index_).innerText = "";
             if (new_mark._index_ === 1) {
-                pointer1 = null;
+                window.pointer1 = null;
             } else {
-                pointer2 = null;
+                window.pointer2 = null;
             }
             a--;
         })
-        new_mark.on('mousemove', function (e) {
-            if (move)
-                document.getElementById('p' + new_mark._index_).innerText = "(" + e.latlng.lat.toFixed(4) + "," + e.latlng.lng.toFixed(4) + ")";
-        })
+        // new_mark.on('mousemove', function (e) {
+        //     if (move)
+        //         document.getElementById('p' + new_mark._index_).innerText = "(" + e.latlng.lat.toFixed(4) + "," + e.latlng.lng.toFixed(4) + ")";
+        // })
         new_mark.on('mouseup', function () {
             move = false
         })
@@ -145,10 +191,10 @@
         const lat = e.latlng.lat.toFixed(4),
             lng = e.latlng.lng.toFixed(4);
         new_mark.bindPopup("Latitude: " + lat + "<br>Longitude: " + lng);
-        document.getElementById('p' + new_mark._index_).innerText = "(" + lat + "," + lng + ")";
+        // document.getElementById('p' + new_mark._index_).innerText = "(" + lat + "," + lng + ")";
     }
 
-    // chengdu_map.on('click', newMarker);
+    chengdu_map.on('click', newMarker);
 
     function showSupersegment() {
         $.getJSON("/show_supersegment").done(
@@ -175,68 +221,68 @@
         )
     }
 
-    function getPoints() {
-        $.getJSON("./get_points").done(
-            function(data) {
-                // console.log(data)
-                let str = "";
-                for (let i = 0; i < 500; i++) {
-                    str = "<option value=\""+data[i]+"\">" + data[i] +" </option>";
-                    document.getElementById("point1").innerHTML += str;
-                    // console.log(document.getElementById("point1").innerHTML);
-                }
-            }
-        )
-    }
+    // function getPoints() {
+    //     $.getJSON("./get_points").done(
+    //         function(data) {
+    //             // console.log(data)
+    //             let str = "";
+    //             for (let i = 0; i < 500; i++) {
+    //                 str = "<option value=\""+data[i]+"\">" + data[i] +" </option>";
+    //                 document.getElementById("point1").innerHTML += str;
+    //                 // console.log(document.getElementById("point1").innerHTML);
+    //             }
+    //         }
+    //     )
+    // }
 
-    window.onload(getPoints());
+    // window.onload(getPoints());
 
-    const selected = "<option selected=\"selected\" disabled=\"disabled\"  style=\"display: none\" value=\"\"></option>";
+    // const selected = "<option selected=\"selected\" disabled=\"disabled\"  style=\"display: none\" value=\"\"></option>";
 
-    function getReachablePoints() {
-        coord = $("#point1 option:selected").val();
-        // console.log(coord);
+    // function getReachablePoints() {
+    //     coord = $("#point1 option:selected").val();
+    //     // console.log(coord);
 
-        $.getJSON("./get_reachable_points", {"p1": coord}).done(
-            function(data) {
-                // console.log(data)
-                document.getElementById("point2").innerHTML = null;
-                let str = "";
-                for (let i = 0; i < data.length; i++) {
-                    str = "<option value=\"" + data[i]+"\">" + data[i] + "</option>";
-                    document.getElementById("point2").innerHTML += str;
-                    // console.log(document.getElementById("point2").innerHTML);
-                }
-                showEndMarker();
-            }
-        )
-    }
+    //     $.getJSON("./get_reachable_points", {"p1": coord}).done(
+    //         function(data) {
+    //             // console.log(data)
+    //             document.getElementById("point2").innerHTML = null;
+    //             let str = "";
+    //             for (let i = 0; i < data.length; i++) {
+    //                 str = "<option value=\"" + data[i]+"\">" + data[i] + "</option>";
+    //                 document.getElementById("point2").innerHTML += str;
+    //                 // console.log(document.getElementById("point2").innerHTML);
+    //             }
+    //             showEndMarker();
+    //         }
+    //     )
+    // }
 
-    let distance = null;
+    // let distance = null;
 
-    function getDistance() {
-        coord = $("#point2 option:selected").val();
-        // console.log(coord);
+    // function getDistance() {
+    //     coord = $("#point2 option:selected").val();
+    //     // console.log(coord);
 
-        $.getJSON("./get_distance", {"p2": coord}).done(
-            function(data) {
-                // console.log(data);
-                this.distance = data + "m";
-                document.getElementById("dist").innerHTML = this.distance;
-            }
-        )
-    }
+    //     $.getJSON("./get_distance", {"p2": coord}).done(
+    //         function(data) {
+    //             // console.log(data);
+    //             this.distance = data + "m";
+    //             document.getElementById("dist").innerHTML = this.distance;
+    //         }
+    //     )
+    // }
 
-    let tte = null;
+    // let tte = null;
 
-    function getTTE() {
-        $.getJSON("./TTE").done(
-            function(data) {
-                this.tte = data + "s";
-                document.getElementById("tte").innerHTML = this.tte;
-            }
-        )
-    }
+    // function getTTE() {
+    //     $.getJSON("./TTE").done(
+    //         function(data) {
+    //             this.tte = data + "s";
+    //             document.getElementById("tte").innerHTML = this.tte;
+    //         }
+    //     )
+    // }
 
     function showRoads() {
         if (overLays.Path)
@@ -266,68 +312,73 @@
         )
     }
 
-    let goldIcon = new L.Icon({
-        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-gold.png',
-        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-        iconSize: [25, 41],
-        iconAnchor: [12, 41],
-        popupAnchor: [1, -34],
-        shadowSize: [41, 41]
-    });
+    // function showRoads(data) {
+    //     if (overLays.Path)
+    //         chengdu_map.removeLayer(overLays.Path);
 
-    let startMarker = null;
-    let endMarker = null;
-
-    function showStartMarker() {
-        coord = $("#point1 option:selected").val();
-        coord = coord.split(",");
-        let lng = Number(coord[0]);
-        let lat = Number(coord[1]);
-
-        if (this.startMarker == null)
-            this.startMarker = L.marker([lat, lng]).addTo(chengdu_map);
-        else
-            this.startMarker.setLatLng([lat, lng]);
-    }
-
-    function showEndMarker() {
-        coord = $("#point2 option:selected").val();
-        coord = coord.split(",");
-        let lng = Number(coord[0]);
-        let lat = Number(coord[1]);
-
-        if (this.endMarker == null)
-            this.endMarker = L.marker([lat, lng]).addTo(chengdu_map);
-        else
-            this.endMarker.setLatLng([lat, lng]);
-    }
-
-    // // deprecated
-    // function get_matched_roads() {
-    //     let p1 = pointer1.getLatLng();
-    //     let p2 = pointer2.getLatLng();
-    //     $.getJSON("/road_match", {"lat1": p1.lat, "lng1": p1.lng, "lat2": p2.lat, "lng2": p2.lng}).done(
-    //         function(data) {
-    //             let matched_road_layer = L.geoJson(
-    //                 data,
-    //                 {
-    //                     style: function(feature) {
-    //                         return {
-    //                             color: 'red',
-    //                             // "weight": 3,
-    //                             // "opacity": 0.85
-    //                         };
-    //                     }
-    //                 }
-    //             );
-    //             matched_road_layer.addTo(chengdu_map);
-    //             overLays.MatchedRoads = matched_road_layer;
-
-    //             ctrl.remove();
-    //             ctrl = L.control.layers(baseLayers, overLays);
-    //             ctrl.addTo(chengdu_map);
+    //     let matched_road_layer = L.geoJson(
+    //         data,
+    //         {
+    //             style: function(feature) {
+    //                 return {
+    //                     color: 'red',
+    //                     // "weight": 3,
+    //                     // "opacity": 0.85
+    //                 };
+    //             }
     //         }
-    //     )
+    //     );
+    //     matched_road_layer.addTo(chengdu_map);
+    //     overLays.Path = matched_road_layer;
+
+    //     ctrl.remove();
+    //     ctrl = L.control.layers(baseLayers, overLays);
+    //     ctrl.addTo(chengdu_map);
     // }
+
+    // let startMarker = null;
+    // let endMarker = null;
+
+    // function showStartMarker() {
+    //     coord = $("#point1 option:selected").val();
+    //     coord = coord.split(",");
+    //     let lng = Number(coord[0]);
+    //     let lat = Number(coord[1]);
+
+    //     if (this.startMarker == null)
+    //         this.startMarker = L.marker([lat, lng]).addTo(chengdu_map);
+    //     else
+    //         this.startMarker.setLatLng([lat, lng]);
+    // }
+
+    // function showEndMarker() {
+    //     coord = $("#point2 option:selected").val();
+    //     coord = coord.split(",");
+    //     let lng = Number(coord[0]);
+    //     let lat = Number(coord[1]);
+
+    //     if (this.endMarker == null)
+    //         this.endMarker = L.marker([lat, lng]).addTo(chengdu_map);
+    //     else
+    //         this.endMarker.setLatLng([lat, lng]);
+    // }
+
+    function showResult() {
+        let p1 = window.pointer1.getLatLng();
+        let p2 = window.pointer2.getLatLng();
+        $.getJSON("/TTE_result", {"lat1": p1.lat, "lng1": p1.lng, "lat2": p2.lat, "lng2": p2.lng}).done(
+            function(data) {
+                // console.log(data);
+                // console.log(typeof data);
+                // console.log(this);
+                // console.log(window);
+                // document.getElementById("dist").innerHTML = data[0];
+                // document.getElementById("tte").innerHTML = data[1];
+                window.pointer1.bindPopup("距离: "+data[0].toFixed(2)+"m<br>预估时间: "+data[1].toFixed(2)+"s").openPopup();
+                window.pointer2.bindPopup("距离: "+data[0].toFixed(2)+"m<br>预估时间: "+data[1].toFixed(2)+"s").openPopup();
+                window.showRoads();
+            }
+        );
+    }
 
 </script>
