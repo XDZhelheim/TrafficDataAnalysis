@@ -12,6 +12,7 @@ import json
 import networkx as nx
 import shapely.wkt as wkt
 import geopandas as gp
+import psycopg2
 
 from pyproj import CRS
 from urllib.parse import unquote
@@ -23,7 +24,13 @@ MAX_INT=999
 
 app=flask.Flask(__name__)
 
-graph=nx.read_shp("./boundary_shapefile/boundary.shp")
+conn=psycopg2.connect(database="chengdu_taxi", user="checker", password="201205", port="6666")
+
+cursor=conn.cursor()
+
+# graph=nx.read_shp("./boundary_shapefile/boundary.shp")
+# graph=nx.Graph(graph)
+# graph=nx.read_gpickle("./road_graph.gpickle")
 
 # length_dict=None
 # path_dict=None
@@ -60,16 +67,16 @@ def get_length(edge):
 def get_manhattan_distance(p1, p2):
     return abs(p1[0] - p2[0]) + abs(p1[1] - p2[1])
 
-def get_matched_points(p1, p2):
-    source=(MAX_INT, MAX_INT)
-    target=(MAX_INT, MAX_INT)
-    for point in graph:
-        if get_manhattan_distance(point, p1)<get_manhattan_distance(source, p1):
-            source=point
-        if get_manhattan_distance(point, p2)<get_manhattan_distance(target, p2):
-            target=point
+# def get_matched_points(p1, p2):
+#     source=(MAX_INT, MAX_INT)
+#     target=(MAX_INT, MAX_INT)
+#     for point in graph:
+#         if get_manhattan_distance(point, p1)<get_manhattan_distance(source, p1):
+#             source=point
+#         if get_manhattan_distance(point, p2)<get_manhattan_distance(target, p2):
+#             target=point
 
-    return source, target
+#     return source, target
 
 # @app.route("/get_points", methods=["GET"])
 # def get_points():
@@ -178,23 +185,93 @@ def calculate_TTE(distance):
     app.logger.debug(tte_list)
     return sum(tte_list)
 
+# @app.route("/TTE_result", methods=["GET"])
+# def get_result():
+#     p1=(float(flask.request.args.get("lng1")), float(flask.request.args.get("lat1")))
+#     p2=(float(flask.request.args.get("lng2")), float(flask.request.args.get("lat2")))
+
+#     source, target=get_matched_points(p1, p2)
+
+#     distance, path=nx.single_source_dijkstra(graph, source, target, weight=lambda a, b, x: get_length(x))
+
+#     app.logger.debug(distance)
+#     app.logger.debug(path)
+
+#     global roads
+#     roads=[]
+#     for i in range(len(path)-1):
+#         roads.append(wkt.loads(graph.get_edge_data(path[i], path[i+1])["Wkt"]))
+#     roads=gp.GeoSeries(roads)
+
+#     tte=calculate_TTE(distance)
+
+#     return json.dumps([tte, distance])
+
 @app.route("/TTE_result", methods=["GET"])
 def get_result():
     p1=(float(flask.request.args.get("lng1")), float(flask.request.args.get("lat1")))
     p2=(float(flask.request.args.get("lng2")), float(flask.request.args.get("lat2")))
 
-    source, target=get_matched_points(p1, p2)
+    sql="select * from nodes order by abs({}-lng)+abs({}-lat)".format(p1[0], p1[1])
+    cursor.execute(sql)
+    start_nodes=cursor.fetchall()
 
-    distance, path=nx.single_source_dijkstra(graph, source, target, weight=lambda a, b, x: get_length(x))
+    sql="select * from nodes order by abs({}-lng)+abs({}-lat)".format(p2[0], p2[1])
+    cursor.execute(sql)
+    end_nodes=cursor.fetchall()
 
-    app.logger.debug(distance)
-    app.logger.debug(path)
+    row=None
+
+    left=0
+    right=0
+    step=1
+    flag=True
+
+    while not row:
+        # sql="select distance, path from dijkstra where source_lng={} and source_lat={} and target_lng={} and target_lat={}".format(start_nodes[left][0], start_nodes[left][1], end_nodes[right][0], end_nodes[right][1])
+        sql="select distance, path from dijkstra order by abs(source_lng-{})+abs(source_lat-{})+abs(target_lng-{})+abs(target_lat-{}) limit 1".format(p1[0], p1[1], p2[0], p2[1])
+
+        cursor.execute(sql)
+        row=cursor.fetchone()
+
+        if not row:
+            # app.logger.debug("left={}, right={}, step={}".format(left, right, step))
+            if left+step>len(start_nodes)-1 or right+step>len(end_nodes)-1:
+                left=0
+                right=0
+                step+=1
+                app.logger.debug(step)
+                flag=False
+            if left==right:
+                right+=step
+            elif right==left+step:
+                left+=step
+                right-=step
+            elif left==right+step:
+                right+=step
+                if not flag:
+                    left-=step-1
+                    right+=1
+
+            continue
+
+        distance=row[0]
+        node_path=eval(row[1])
+
+    edges=[]
+    for i in range(len(node_path)-1):
+        sql="select edge from nodes_edge where source_lng={} and source_lat={} and target_lng={} and target_lat={}".format(node_path[i][0], node_path[i][1], node_path[i+1][0], node_path[i+1][1])
+
+        cursor.execute(sql)
+        row=cursor.fetchone()
+
+        edge=row[0]
+        edge=wkt.loads(edge)
+
+        edges.append(edge)
 
     global roads
-    roads=[]
-    for i in range(len(path)-1):
-        roads.append(wkt.loads(graph.get_edge_data(path[i], path[i+1])["Wkt"]))
-    roads=gp.GeoSeries(roads)
+    roads=gp.GeoSeries(edges)
 
     tte=calculate_TTE(distance)
 

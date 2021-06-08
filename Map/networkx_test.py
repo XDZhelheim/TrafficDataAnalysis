@@ -47,23 +47,8 @@ def get_length(edge):
 if __name__ == "__main__":
     graph=nx.read_shp("./boundary_shapefile/boundary.shp")
 
-    nx.draw(graph)
-    plt.savefig("./graph.png")
-    exit(0)
-
     p1=(104.08143, 30.69705)
     # p2=(104.08145, 30.69757)
     p2=(104.03855, 30.71273)
 
-    # try:
-    #     length, path=nx.bidirectional_dijkstra(graph, p1, p2, weight=lambda a, b, x: get_length(x))
-
-    #     print(length, path)
-    # except nx.exception.NetworkXNoPath:
-    #     print("Cannot reach")
-
-    length_dict, path_dict=nx.single_source_dijkstra(graph, p1, weight=lambda a, b, x: get_length(x))
-    print(path_dict)
-    # print(length_dict)
-
-    # print(graph.nodes)
+    print(graph[p1])

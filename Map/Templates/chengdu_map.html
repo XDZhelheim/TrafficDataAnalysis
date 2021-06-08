@@ -161,20 +161,20 @@
         a++;
         const new_mark = L.marker().setLatLng(e.latlng).addTo(chengdu_map);
         new_mark.dragging.enable();
-        if (window.pointer1 == null) {
+        if (pointer1 == null) {
             new_mark._index_ = 1;
-            window.pointer1 = new_mark;
+            pointer1 = new_mark;
         } else {
             new_mark._index_ = 2;
-            window.pointer2 = new_mark;
+            pointer2 = new_mark;
         }
         new_mark.on('dblclick', function (e) {
             chengdu_map.removeLayer(e.target)
             // document.getElementById('p' + new_mark._index_).innerText = "";
             if (new_mark._index_ === 1) {
-                window.pointer1 = null;
+                pointer1 = null;
             } else {
-                window.pointer2 = null;
+                pointer2 = null;
             }
             a--;
         })
@@ -364,8 +364,8 @@
     // }
 
     function showResult() {
-        let p1 = window.pointer1.getLatLng();
-        let p2 = window.pointer2.getLatLng();
+        let p1 = pointer1.getLatLng();
+        let p2 = pointer2.getLatLng();
         $.getJSON("/TTE_result", {"lat1": p1.lat, "lng1": p1.lng, "lat2": p2.lat, "lng2": p2.lng}).done(
             function(data) {
                 // console.log(data);
@@ -374,8 +374,8 @@
                 // console.log(window);
                 // document.getElementById("dist").innerHTML = data[0];
                 // document.getElementById("tte").innerHTML = data[1];
-                window.pointer1.bindPopup("距离: "+data[0].toFixed(2)+"m<br>预估时间: "+data[1].toFixed(2)+"s").openPopup();
-                window.pointer2.bindPopup("距离: "+data[0].toFixed(2)+"m<br>预估时间: "+data[1].toFixed(2)+"s").openPopup();
+                pointer1.bindPopup("距离: "+data[0].toFixed(2)+"m<br>预估时间: "+data[1].toFixed(2)+"s").openPopup();
+                pointer2.bindPopup("距离: "+data[0].toFixed(2)+"m<br>预估时间: "+data[1].toFixed(2)+"s").openPopup();
                 window.showRoads();
             }
         );
