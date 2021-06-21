@@ -13,6 +13,7 @@ import networkx as nx
 import shapely.wkt as wkt
 import geopandas as gp
 import psycopg2
+import time
 
 from pyproj import CRS
 from urllib.parse import unquote
@@ -231,9 +232,15 @@ def get_result():
         # sql="select distance, path from dijkstra where source_lng={} and source_lat={} and target_lng={} and target_lat={}".format(start_nodes[left][0], start_nodes[left][1], end_nodes[right][0], end_nodes[right][1])
         sql="select distance, path from dijkstra order by abs(source_lng-{})+abs(source_lat-{})+abs(target_lng-{})+abs(target_lat-{}) limit 1".format(p1[0], p1[1], p2[0], p2[1])
 
+        start=time.time()
+
         cursor.execute(sql)
         row=cursor.fetchone()
 
+        end=time.time()
+        app.logger.debug("Path Query Time = {}".format(end-start))
+
+        # !deprecated
         if not row:
             # app.logger.debug("left={}, right={}, step={}".format(left, right, step))
             if left+step>len(start_nodes)-1 or right+step>len(end_nodes)-1:
@@ -258,6 +265,8 @@ def get_result():
         distance=row[0]
         node_path=eval(row[1])
 
+    start=time.time()
+
     edges=[]
     for i in range(len(node_path)-1):
         sql="select edge from nodes_edge where source_lng={} and source_lat={} and target_lng={} and target_lat={}".format(node_path[i][0], node_path[i][1], node_path[i+1][0], node_path[i+1][1])
@@ -269,6 +278,9 @@ def get_result():
         edge=wkt.loads(edge)
 
         edges.append(edge)
+
+    end=time.time()
+    app.logger.debug("Roads Query Time = {}".format(end-start))
 
     global roads
     roads=gp.GeoSeries(edges)
