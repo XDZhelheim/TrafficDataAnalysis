@@ -23,3 +23,7 @@ boundary_shapefile/
 track_*_cars
 
 *.gpickle
+
+temp*
+
+db_data/

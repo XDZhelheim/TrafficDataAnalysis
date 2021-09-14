@@ -14,7 +14,7 @@ from sklearn.cluster import KMeans, MeanShift
 from sklearn import metrics
 
 # work directory
-work_path="D:\\Codes\\PythonWorkspace\\TrafficDataAnalysis\\"
+work_path="H:\\Codes\\PythonWorkspace\\TrafficDataAnalysis\\"
 
 colors=["#A1E2E6", "#E6BDA1", "#B3A16B", "#678072", "#524A4A"]
 
@@ -590,7 +590,7 @@ if __name__ == "__main__":
     
     print("After drop: {} roads".format(len(roads)))
 
-    segments, segment_centers=supersegment(roads, buffer_distance, num_of_cars, cluster_method=cluster_method, timer=True, plot=False, write_file=True)
+    segments, segment_centers=supersegment(roads, buffer_distance, num_of_cars, cluster_method=cluster_method, timer=True, plot=True, write_file=False)
 
     print(np.array(segment_centers))
 
